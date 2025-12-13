@@ -15,6 +15,8 @@ export enum DayOfWeek {
   SUNDAY = 'Domingo'
 }
 
+export type TimePeriod = 'morning' | 'afternoon' | 'evening';
+
 export enum Category {
   HOME = 'Rutinas de casa',
   SCHOOL = 'Escuela',
@@ -42,17 +44,27 @@ export interface Activity {
   pictogramId: string;
   customLabel?: string;
   time?: string;
+  period?: TimePeriod; // New field for Morning/Afternoon/Evening
   isDone: boolean;
   notes?: string;
 }
 
-export interface WeekSchedule {
-  [key: string]: Activity[]; // key is DayOfWeek
+export interface Reward {
+  id: string;
+  dayKey: string;
+  period: TimePeriod;
+  label: string;
+  emoji: string; // Simple emoji or icon name
+  imageUrl?: string; // Optional custom image
+  isRedeemed: boolean;
 }
 
-// Map of "YYYY-Www" -> WeekSchedule
-export interface YearlySchedule {
-    [weekKey: string]: WeekSchedule;
+export interface WeekSchedule {
+  [key: string]: Activity[]; // key is YYYY-MM-DD (ISO Date)
+}
+
+export interface RewardSchedule {
+  [key: string]: Reward; // key is "YYYY-MM-DD-period"
 }
 
 export interface PersonOrPlace {
@@ -69,6 +81,4 @@ export interface AppSettings {
   voiceEnabled: boolean;
   autoSpeak: boolean; // Auto speak when clicking an item
   pin: string; // PIN for Adult mode
-  securityQuestion?: string; // Recovery question
-  securityAnswer?: string; // Recovery answer
 }

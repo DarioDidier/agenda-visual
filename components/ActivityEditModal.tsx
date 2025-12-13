@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Activity, PictogramData } from '../types';
-import { X, Clock, Type, Image as ImageIcon } from 'lucide-react';
+import { Activity, PictogramData, TimePeriod } from '../types';
+import { X, Clock, Type, Image as ImageIcon, Sun, Sunset, Moon } from 'lucide-react';
 import { PictogramSelectorModal } from './PictogramSelectorModal';
 import { useApp } from '../context/AppContext';
 import { PictogramIcon } from './PictogramIcon';
@@ -17,6 +17,7 @@ export const ActivityEditModal: React.FC<Props> = ({ activity, onSave, onClose }
   const { pictograms } = useApp();
   const [time, setTime] = useState(activity.time || '');
   const [customLabel, setCustomLabel] = useState(activity.customLabel || '');
+  const [period, setPeriod] = useState<TimePeriod>(activity.period || 'morning');
   
   const [showSelector, setShowSelector] = useState(false);
   const [tempPictogramId, setTempPictogramId] = useState(activity.pictogramId);
@@ -24,7 +25,7 @@ export const ActivityEditModal: React.FC<Props> = ({ activity, onSave, onClose }
   const currentPictogram = pictograms.find(p => p.id === tempPictogramId);
 
   const handleSave = () => {
-    onSave({ time, customLabel, pictogramId: tempPictogramId });
+    onSave({ time, customLabel, pictogramId: tempPictogramId, period });
     onClose();
   };
 
@@ -71,27 +72,56 @@ export const ActivityEditModal: React.FC<Props> = ({ activity, onSave, onClose }
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-                    <Clock size={16} /> Horario
-                </label>
-                <input 
-                    type="time" 
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none bg-white text-slate-900"
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-2">Momento del Día</label>
+                <div className="flex bg-slate-100 p-1 rounded-xl">
+                    <button 
+                        onClick={() => setPeriod('morning')}
+                        className={`flex-1 py-2 rounded-lg flex flex-col items-center gap-1 transition-all ${period === 'morning' ? 'bg-white shadow text-yellow-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <Sun size={20} />
+                        <span className="text-xs font-bold">Mañana</span>
+                    </button>
+                    <button 
+                         onClick={() => setPeriod('afternoon')}
+                         className={`flex-1 py-2 rounded-lg flex flex-col items-center gap-1 transition-all ${period === 'afternoon' ? 'bg-white shadow text-orange-500' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <Sunset size={20} />
+                        <span className="text-xs font-bold">Tarde</span>
+                    </button>
+                    <button 
+                         onClick={() => setPeriod('evening')}
+                         className={`flex-1 py-2 rounded-lg flex flex-col items-center gap-1 transition-all ${period === 'evening' ? 'bg-white shadow text-purple-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <Moon size={20} />
+                        <span className="text-xs font-bold">Noche</span>
+                    </button>
+                </div>
             </div>
-            
-            <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-                    <Type size={16} /> Etiqueta / Texto
-                </label>
-                <input 
-                    type="text" 
-                    value={customLabel}
-                    onChange={(e) => setCustomLabel(e.target.value)}
-                    className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none bg-white text-slate-900"
-                />
+
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
+                        <Clock size={16} /> Horario
+                    </label>
+                    <input 
+                        type="time" 
+                        value={time}
+                        onChange={(e) => setTime(e.target.value)}
+                        className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-brand-primary outline-none"
+                    />
+                </div>
+                
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
+                        <Type size={16} /> Etiqueta
+                    </label>
+                    <input 
+                        type="text" 
+                        value={customLabel}
+                        onChange={(e) => setCustomLabel(e.target.value)}
+                        className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-brand-primary outline-none"
+                    />
+                </div>
             </div>
         </div>
 

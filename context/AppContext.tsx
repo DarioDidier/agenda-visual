@@ -1,21 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppSettings, UserMode, WeekSchedule, PictogramData, PersonOrPlace, Activity, YearlySchedule } from '../types';
+import { AppSettings, UserMode, WeekSchedule, PictogramData, PersonOrPlace, Activity, Reward, RewardSchedule, TimePeriod } from '../types';
 import { INITIAL_PICTOGRAMS, EMPTY_SCHEDULE } from '../constants';
-import { getWeekKey } from '../utils/dateUtils';
+
+// Date Utility Helpers
+const getMonday = (d: Date) => {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  return new Date(date.setDate(diff));
+};
 
 interface AppContextType {
   mode: UserMode;
   setMode: (mode: UserMode) => void;
-  
-  // Date Navigation
-  selectedDate: Date;
-  setSelectedDate: (date: Date) => void;
-  goToToday: () => void;
-
-  // Schedule (Derived from selectedDate)
   schedule: WeekSchedule;
   setSchedule: (schedule: React.SetStateAction<WeekSchedule>) => void;
-  
   pictograms: PictogramData[];
   addPictogram: (pic: PictogramData) => void;
   peoplePlaces: PersonOrPlace[];
@@ -28,37 +27,35 @@ interface AppContextType {
   updateActivity: (day: string, activityId: string, updates: Partial<Activity>) => void;
   deleteActivity: (day: string, activityId: string) => void;
   copyRoutine: (sourceDay: string, targetDay: string) => void;
+  // Rewards
+  rewards: RewardSchedule;
+  setReward: (dayKey: string, period: TimePeriod, label: string, emoji: string, imageUrl?: string) => void;
+  redeemReward: (dayKey: string, period: TimePeriod) => void;
+  // Date Navigation
+  currentDate: Date;
+  setCurrentDate: (date: Date) => void;
+  goToToday: () => void;
+  changeWeek: (weeks: number) => void;
+  weekDates: Date[]; // The 7 dates of the current week
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // --- STATE INITIALIZATION ---
-  
+  // Load from local storage or defaults
   const [mode, setMode] = useState<UserMode>(() => {
     const saved = localStorage.getItem('mav_mode');
     return (saved as UserMode) || UserMode.ADULT;
   });
+  
+  const [schedule, setSchedule] = useState<WeekSchedule>(() => {
+    const saved = localStorage.getItem('mav_schedule');
+    return saved ? JSON.parse(saved) : EMPTY_SCHEDULE;
+  });
 
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-
-  // Master storage for all weeks
-  const [yearlySchedule, setYearlySchedule] = useState<YearlySchedule>(() => {
-      const savedYearly = localStorage.getItem('mav_yearly_schedules');
-      if (savedYearly) {
-          return JSON.parse(savedYearly);
-      }
-
-      // Migration: Check for old single-week schedule
-      const oldSingleSchedule = localStorage.getItem('mav_schedule');
-      if (oldSingleSchedule) {
-          const currentWeekKey = getWeekKey(new Date());
-          return {
-              [currentWeekKey]: JSON.parse(oldSingleSchedule)
-          };
-      }
-
-      return {};
+  const [rewards, setRewards] = useState<RewardSchedule>(() => {
+    const saved = localStorage.getItem('mav_rewards');
+    return saved ? JSON.parse(saved) : {};
   });
 
   const [pictograms, setPictograms] = useState<PictogramData[]>(() => {
@@ -76,60 +73,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('mav_settings');
-    const defaults = {
+    return saved ? JSON.parse(saved) : {
       highContrast: false,
       showText: true,
       voiceEnabled: true,
       autoSpeak: true,
-      pin: '1234',
-      securityQuestion: '¿Nombre de tu primera mascota?',
-      securityAnswer: 'firulais'
+      pin: '1234' // Default PIN
     };
-    return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
   });
 
-  // --- DERIVED STATE ---
-  
-  const currentWeekKey = getWeekKey(selectedDate);
-  
-  // The schedule the rest of the app sees is just a slice of the yearly schedule
-  const currentSchedule = yearlySchedule[currentWeekKey] || EMPTY_SCHEDULE;
+  // Date State
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-  // --- ACTIONS ---
-
-  // Wrapper to update only the current week in the yearly master object
-  const setSchedule = (action: React.SetStateAction<WeekSchedule>) => {
-      setYearlySchedule(prevYearly => {
-          const prevWeekSchedule = prevYearly[currentWeekKey] || EMPTY_SCHEDULE;
-          
-          let newWeekSchedule: WeekSchedule;
-          if (typeof action === 'function') {
-              newWeekSchedule = action(prevWeekSchedule);
-          } else {
-              newWeekSchedule = action;
-          }
-
-          return {
-              ...prevYearly,
-              [currentWeekKey]: newWeekSchedule
-          };
-      });
-  };
-
-  const goToToday = () => setSelectedDate(new Date());
-
-  // --- PERSISTENCE ---
-
+  // Persistence
   useEffect(() => {
     localStorage.setItem('mav_mode', mode);
   }, [mode]);
 
   useEffect(() => {
-    localStorage.setItem('mav_yearly_schedules', JSON.stringify(yearlySchedule));
-    // Also update legacy key for safety/fallback, though it will only hold the LAST edited week
-    // Ideally we stop using this, but keeping it ensures if they downgrade app version something exists
-    localStorage.setItem('mav_schedule', JSON.stringify(currentSchedule));
-  }, [yearlySchedule, currentSchedule]);
+    localStorage.setItem('mav_schedule', JSON.stringify(schedule));
+  }, [schedule]);
+
+  useEffect(() => {
+    localStorage.setItem('mav_rewards', JSON.stringify(rewards));
+  }, [rewards]);
 
   useEffect(() => {
     try {
@@ -148,7 +115,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('mav_settings', JSON.stringify(settings));
   }, [settings]);
 
-  // --- HELPER FUNCTIONS ---
+  // --- Date Logic ---
+  const goToToday = () => setCurrentDate(new Date());
+  
+  const changeWeek = (weeks: number) => {
+      const newDate = new Date(currentDate);
+      newDate.setDate(newDate.getDate() + (weeks * 7));
+      setCurrentDate(newDate);
+  };
+
+  // Generate the 7 dates for the currently selected week
+  const weekDates = React.useMemo(() => {
+      const start = getMonday(currentDate);
+      return Array.from({ length: 7 }).map((_, i) => {
+          const day = new Date(start);
+          day.setDate(start.getDate() + i);
+          return day;
+      });
+  }, [currentDate]);
+
+  // --- CRUD Operations ---
 
   const addPictogram = (pic: PictogramData) => {
     setPictograms(prev => {
@@ -173,41 +159,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSettings(prev => ({ ...prev, ...newSettings }));
   };
 
-  const toggleActivityDone = (day: string, activityId: string) => {
+  const toggleActivityDone = (dayKey: string, activityId: string) => {
     setSchedule(prev => ({
       ...prev,
-      [day]: prev[day].map(act => 
+      [dayKey]: (prev[dayKey] || []).map(act => 
         act.id === activityId ? { ...act, isDone: !act.isDone } : act
       )
     }));
   };
 
-  const updateActivity = (day: string, activityId: string, updates: Partial<Activity>) => {
+  const updateActivity = (dayKey: string, activityId: string, updates: Partial<Activity>) => {
     setSchedule(prev => ({
       ...prev,
-      [day]: prev[day].map(act =>
+      [dayKey]: (prev[dayKey] || []).map(act =>
         act.id === activityId ? { ...act, ...updates } : act
       )
     }));
   };
 
-  const deleteActivity = (day: string, activityId: string) => {
+  const deleteActivity = (dayKey: string, activityId: string) => {
     setSchedule(prev => {
-      const dayActivities = prev[day];
+      const dayActivities = prev[dayKey];
       if (!dayActivities) return prev;
       
       const newActivities = dayActivities.filter(act => act.id !== activityId);
       
       return {
         ...prev,
-        [day]: newActivities
+        [dayKey]: newActivities
       };
     });
   };
 
-  const copyRoutine = (sourceDay: string, targetDay: string) => {
+  const copyRoutine = (sourceDayKey: string, targetDayKey: string) => {
       setSchedule(prev => {
-          const sourceActivities = prev[sourceDay];
+          const sourceActivities = prev[sourceDayKey];
           if (!sourceActivities || sourceActivities.length === 0) return prev;
 
           const newActivities = sourceActivities.map(act => ({
@@ -218,16 +204,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           return {
               ...prev,
-              [targetDay]: [...(prev[targetDay] || []), ...newActivities]
+              [targetDayKey]: [...(prev[targetDayKey] || []), ...newActivities]
           };
       });
+  };
+
+  // --- Rewards Logic ---
+  const setReward = (dayKey: string, period: TimePeriod, label: string, emoji: string, imageUrl?: string) => {
+    const key = `${dayKey}-${period}`;
+    const newReward: Reward = {
+      id: crypto.randomUUID(),
+      dayKey,
+      period,
+      label,
+      emoji,
+      imageUrl,
+      isRedeemed: false
+    };
+    setRewards(prev => ({ ...prev, [key]: newReward }));
+  };
+
+  const redeemReward = (dayKey: string, period: TimePeriod) => {
+    const key = `${dayKey}-${period}`;
+    if (!rewards[key]) return;
+    
+    setRewards(prev => ({
+      ...prev,
+      [key]: { ...prev[key], isRedeemed: true }
+    }));
   };
 
   return (
     <AppContext.Provider value={{
       mode, setMode,
-      selectedDate, setSelectedDate, goToToday,
-      schedule: currentSchedule, setSchedule,
+      schedule, setSchedule,
       pictograms, addPictogram,
       peoplePlaces, addPersonOrPlace,
       updatePersonOrPlace,
@@ -236,7 +246,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toggleActivityDone,
       updateActivity,
       deleteActivity,
-      copyRoutine
+      copyRoutine,
+      rewards, setReward, redeemReward,
+      currentDate, setCurrentDate, goToToday, changeWeek, weekDates
     }}>
       {children}
     </AppContext.Provider>

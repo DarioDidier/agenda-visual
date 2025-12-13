@@ -10,7 +10,6 @@ interface Props {
   activity: Activity;
   pictogram: PictogramData;
   day?: string;
-  readOnly?: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
   onMoveUp?: () => void;
@@ -21,7 +20,6 @@ export const PictogramCard: React.FC<Props> = ({
   activity, 
   pictogram, 
   day, 
-  readOnly = false,
   onDelete,
   onEdit, 
   onMoveUp, 
@@ -90,7 +88,6 @@ export const PictogramCard: React.FC<Props> = ({
         ${cardBg}
         ${mode === UserMode.CHILD ? 'h-48 w-full active:scale-95 cursor-pointer' : 'h-40 w-full'}
         ${activity.isDone && mode === UserMode.CHILD ? 'opacity-60 grayscale' : ''}
-        ${readOnly && mode === UserMode.ADULT ? 'opacity-80' : ''}
         border-b-4 group
       `}
     >
@@ -124,8 +121,8 @@ export const PictogramCard: React.FC<Props> = ({
         </button>
       )}
 
-      {/* Interaction Layer - Adult (Edit Controls) - Only show if NOT readOnly */}
-      {mode === UserMode.ADULT && !readOnly && (
+      {/* Interaction Layer - Adult (Edit Controls) - High Z-Index ensuring clickability */}
+      {mode === UserMode.ADULT && (
         <>
             <div className="absolute -top-3 -right-2 z-50">
                 {onDelete && (

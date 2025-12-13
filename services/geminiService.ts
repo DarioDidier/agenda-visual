@@ -26,6 +26,7 @@ export const generateRoutine = async (query: string): Promise<any[]> => {
       Crea una rutina secuencial para un niño basada en esta solicitud: "${query}".
       
       Usa un lenguaje muy simple y directo.
+      Asigna inteligentemente el "period" (morning, afternoon, evening) a cada actividad según la hora lógica del día.
       
       Para cada paso, proporciona una 'arasaacKeyword'. Esta palabra clave debe ser UN solo sustantivo o verbo en infinitivo en ESPAÑOL que describa mejor la acción visualmente para buscarla en una base de datos de pictogramas (ej: para "Lavarse los dientes" usa "dientes" o "cepillar").
       
@@ -53,12 +54,16 @@ export const generateRoutine = async (query: string): Promise<any[]> => {
                 type: Type.STRING,
                 description: `Categoría de la actividad. Valores posibles: ${categoriesStr}`,
               },
+              period: {
+                type: Type.STRING,
+                description: "El momento del día. Valores: 'morning', 'afternoon', 'evening'.",
+              },
               time: {
                 type: Type.STRING,
                 description: "Hora sugerida en formato HH:MM (opcional)",
               }
             },
-            required: ["label", "category", "iconName", "arasaacKeyword"]
+            required: ["label", "category", "iconName", "arasaacKeyword", "period"]
           }
         }
       }

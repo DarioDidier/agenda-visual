@@ -81,7 +81,7 @@ export const PictogramSelectorModal: React.FC<Props> = ({ onSelect, onClose }) =
                         placeholder="Buscar pictograma (ej: comer, jugar)..." 
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none text-lg bg-white text-slate-900 placeholder:text-slate-400"
+                        className="w-full pl-10 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-brand-primary outline-none text-lg"
                         autoFocus
                     />
                     {isSearching && <Loader2 className="absolute right-3 top-3 animate-spin text-brand-primary" size={18} />}
@@ -90,7 +90,7 @@ export const PictogramSelectorModal: React.FC<Props> = ({ onSelect, onClose }) =
                     <select 
                         value={selectedCategory}
                         onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="border border-slate-300 rounded-xl px-4 py-2 bg-white text-slate-900"
+                        className="border rounded-xl px-4 py-2 bg-white"
                     >
                         {categories.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>

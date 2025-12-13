@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PersonOrPlace } from '../types';
-import { X, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { X, Upload, Image as ImageIcon } from 'lucide-react';
 
 interface Props {
   initialData?: PersonOrPlace;
@@ -13,7 +13,6 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
   const [description, setDescription] = useState('');
   const [type, setType] = useState<'PERSON' | 'PLACE'>('PERSON');
   const [imageUrl, setImageUrl] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -32,52 +31,16 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
     }
   }, [initialData]);
 
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target?.result as string;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 500; // Limit width to save space
-                const scaleSize = MAX_WIDTH / img.width;
-                
-                // Only resize if bigger than max width
-                if (img.width > MAX_WIDTH) {
-                    canvas.width = MAX_WIDTH;
-                    canvas.height = img.height * scaleSize;
-                } else {
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                }
-
-                const ctx = canvas.getContext('2d');
-                ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-                
-                // Export as JPEG with 0.7 quality
-                resolve(canvas.toDataURL('image/jpeg', 0.7));
-            };
-            img.onerror = (err) => reject(err);
-        };
-        reader.onerror = (err) => reject(err);
-    });
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setIsProcessing(true);
-      try {
-          const compressedBase64 = await compressImage(file);
-          setImageUrl(compressedBase64);
-      } catch (error) {
-          console.error("Error processing image", error);
-          alert("Error al procesar la imagen. Intenta con otra.");
-      } finally {
-          setIsProcessing(false);
-      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target && typeof event.target.result === 'string') {
+            setImageUrl(event.target.result);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -103,10 +66,10 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
         <div className="flex justify-between items-center border-b pb-2">
-            <h3 className="font-bold text-xl text-slate-900">
+            <h3 className="font-bold text-xl text-slate-800">
                 {initialData ? 'Editar' : 'Agregar'} {type === 'PERSON' ? 'Persona' : 'Lugar'}
             </h3>
-            <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X className="text-slate-600" /></button>
+            <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-full"><X /></button>
         </div>
 
         <div className="space-y-4">
@@ -114,48 +77,46 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
             <div className="flex bg-slate-100 p-1 rounded-lg">
                 <button 
                     onClick={() => setType('PERSON')}
-                    className={`flex-1 py-2 rounded-md font-bold text-sm transition-all ${type === 'PERSON' ? 'bg-white shadow text-brand-primary' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`flex-1 py-2 rounded-md font-bold text-sm transition-all ${type === 'PERSON' ? 'bg-white shadow text-brand-primary' : 'text-slate-500'}`}
                 >
                     Persona
                 </button>
                 <button 
                     onClick={() => setType('PLACE')}
-                    className={`flex-1 py-2 rounded-md font-bold text-sm transition-all ${type === 'PLACE' ? 'bg-white shadow text-brand-primary' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`flex-1 py-2 rounded-md font-bold text-sm transition-all ${type === 'PLACE' ? 'bg-white shadow text-brand-primary' : 'text-slate-500'}`}
                 >
                     Lugar
                 </button>
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-slate-800 mb-1">Nombre</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
                 <input 
                     type="text" 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Ej: Mamá, Escuela, Parque..."
-                    className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none bg-white text-slate-900 placeholder:text-slate-400"
+                    className="w-full p-3 bg-white text-slate-900 border rounded-xl focus:ring-2 focus:ring-brand-primary outline-none"
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-slate-800 mb-1">Descripción (Opcional)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Descripción (Opcional)</label>
                 <input 
                     type="text" 
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Ej: Maestra de matemáticas"
-                    className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none bg-white text-slate-900 placeholder:text-slate-400"
+                    className="w-full p-3 bg-white text-slate-900 border rounded-xl focus:ring-2 focus:ring-brand-primary outline-none"
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-slate-800 mb-1">Imagen / Foto</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Imagen / Foto</label>
                 
                 <div className="flex gap-4 items-start">
                     <div className="w-24 h-24 bg-slate-100 rounded-xl overflow-hidden border-2 border-dashed border-slate-300 flex items-center justify-center relative shrink-0">
-                        {isProcessing ? (
-                            <Loader2 className="animate-spin text-brand-primary" />
-                        ) : imageUrl ? (
+                        {imageUrl ? (
                             <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
                         ) : (
                             <ImageIcon className="text-slate-400" />
@@ -165,10 +126,9 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
                     <div className="flex-1 space-y-2">
                         <button 
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={isProcessing}
-                            className="w-full py-2 bg-blue-50 text-brand-primary font-bold rounded-lg border border-blue-200 flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                            className="w-full py-2 bg-blue-50 text-brand-primary font-bold rounded-lg border border-blue-200 flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors"
                         >
-                            <Upload size={18} /> {isProcessing ? 'Procesando...' : 'Subir Foto'}
+                            <Upload size={18} /> Subir Foto
                         </button>
                         <input 
                             type="file" 
@@ -179,7 +139,7 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
                             className="hidden" 
                         />
                         <p className="text-xs text-slate-500">
-                            La imagen se optimizará automáticamente para ocupar menos espacio.
+                            Sube una foto real para ayudar al reconocimiento.
                         </p>
                     </div>
                 </div>
@@ -190,7 +150,7 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
             <button onClick={onClose} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg">Cancelar</button>
             <button 
                 onClick={handleSave} 
-                disabled={!name || isProcessing}
+                disabled={!name}
                 className="px-6 py-2 bg-brand-primary text-white font-bold rounded-lg shadow hover:bg-brand-secondary disabled:opacity-50"
             >
                 Guardar
