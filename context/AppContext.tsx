@@ -1,12 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppSettings, UserMode, WeekSchedule, PictogramData, PersonOrPlace, Activity } from '../types';
+import { AppSettings, UserMode, WeekSchedule, PictogramData, PersonOrPlace, Activity, YearlySchedule } from '../types';
 import { INITIAL_PICTOGRAMS, EMPTY_SCHEDULE } from '../constants';
+import { getWeekKey } from '../utils/dateUtils';
 
 interface AppContextType {
   mode: UserMode;
   setMode: (mode: UserMode) => void;
+  
+  // Date Navigation
+  selectedDate: Date;
+  setSelectedDate: (date: Date) => void;
+  goToToday: () => void;
+
+  // Schedule (Derived from selectedDate)
   schedule: WeekSchedule;
   setSchedule: (schedule: React.SetStateAction<WeekSchedule>) => void;
+  
   pictograms: PictogramData[];
   addPictogram: (pic: PictogramData) => void;
   peoplePlaces: PersonOrPlace[];
@@ -24,15 +33,32 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load from local storage or defaults
+  // --- STATE INITIALIZATION ---
+  
   const [mode, setMode] = useState<UserMode>(() => {
     const saved = localStorage.getItem('mav_mode');
     return (saved as UserMode) || UserMode.ADULT;
   });
-  
-  const [schedule, setSchedule] = useState<WeekSchedule>(() => {
-    const saved = localStorage.getItem('mav_schedule');
-    return saved ? JSON.parse(saved) : EMPTY_SCHEDULE;
+
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  // Master storage for all weeks
+  const [yearlySchedule, setYearlySchedule] = useState<YearlySchedule>(() => {
+      const savedYearly = localStorage.getItem('mav_yearly_schedules');
+      if (savedYearly) {
+          return JSON.parse(savedYearly);
+      }
+
+      // Migration: Check for old single-week schedule
+      const oldSingleSchedule = localStorage.getItem('mav_schedule');
+      if (oldSingleSchedule) {
+          const currentWeekKey = getWeekKey(new Date());
+          return {
+              [currentWeekKey]: JSON.parse(oldSingleSchedule)
+          };
+      }
+
+      return {};
   });
 
   const [pictograms, setPictograms] = useState<PictogramData[]>(() => {
@@ -55,21 +81,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showText: true,
       voiceEnabled: true,
       autoSpeak: true,
-      pin: '1234', // Default PIN
+      pin: '1234',
       securityQuestion: '¿Nombre de tu primera mascota?',
       securityAnswer: 'firulais'
     };
     return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
   });
 
-  // Persistence
+  // --- DERIVED STATE ---
+  
+  const currentWeekKey = getWeekKey(selectedDate);
+  
+  // The schedule the rest of the app sees is just a slice of the yearly schedule
+  const currentSchedule = yearlySchedule[currentWeekKey] || EMPTY_SCHEDULE;
+
+  // --- ACTIONS ---
+
+  // Wrapper to update only the current week in the yearly master object
+  const setSchedule = (action: React.SetStateAction<WeekSchedule>) => {
+      setYearlySchedule(prevYearly => {
+          const prevWeekSchedule = prevYearly[currentWeekKey] || EMPTY_SCHEDULE;
+          
+          let newWeekSchedule: WeekSchedule;
+          if (typeof action === 'function') {
+              newWeekSchedule = action(prevWeekSchedule);
+          } else {
+              newWeekSchedule = action;
+          }
+
+          return {
+              ...prevYearly,
+              [currentWeekKey]: newWeekSchedule
+          };
+      });
+  };
+
+  const goToToday = () => setSelectedDate(new Date());
+
+  // --- PERSISTENCE ---
+
   useEffect(() => {
     localStorage.setItem('mav_mode', mode);
   }, [mode]);
 
   useEffect(() => {
-    localStorage.setItem('mav_schedule', JSON.stringify(schedule));
-  }, [schedule]);
+    localStorage.setItem('mav_yearly_schedules', JSON.stringify(yearlySchedule));
+    // Also update legacy key for safety/fallback, though it will only hold the LAST edited week
+    // Ideally we stop using this, but keeping it ensures if they downgrade app version something exists
+    localStorage.setItem('mav_schedule', JSON.stringify(currentSchedule));
+  }, [yearlySchedule, currentSchedule]);
 
   useEffect(() => {
     try {
@@ -87,6 +147,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('mav_settings', JSON.stringify(settings));
   }, [settings]);
+
+  // --- HELPER FUNCTIONS ---
 
   const addPictogram = (pic: PictogramData) => {
     setPictograms(prev => {
@@ -164,7 +226,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <AppContext.Provider value={{
       mode, setMode,
-      schedule, setSchedule,
+      selectedDate, setSelectedDate, goToToday,
+      schedule: currentSchedule, setSchedule,
       pictograms, addPictogram,
       peoplePlaces, addPersonOrPlace,
       updatePersonOrPlace,

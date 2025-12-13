@@ -50,6 +50,11 @@ export interface WeekSchedule {
   [key: string]: Activity[]; // key is DayOfWeek
 }
 
+// Map of "YYYY-Www" -> WeekSchedule
+export interface YearlySchedule {
+    [weekKey: string]: WeekSchedule;
+}
+
 export interface PersonOrPlace {
   id: string;
   name: string;

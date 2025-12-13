@@ -1,22 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Loader2, ArrowRight, Edit2 } from 'lucide-react';
+import { Sparkles, Loader2, ArrowRight, Edit2, Lock } from 'lucide-react';
 import { generateRoutine } from '../services/geminiService';
 import { searchArasaac, getArasaacImageUrl } from '../services/arasaacService';
 import { Activity, PictogramData, DayOfWeek, Category } from '../types';
 import { PictogramIcon } from '../components/PictogramIcon';
 import { DAYS_ORDER } from '../constants';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
+import { CalendarNavigation } from '../components/CalendarNavigation';
+import { getStartOfWeek, isDateInPast } from '../utils/dateUtils';
 
 export const AIGenerator: React.FC = () => {
-  const { addPictogram, setSchedule, schedule } = useApp();
+  const { addPictogram, setSchedule, schedule, selectedDate } = useApp();
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [generatedItems, setGeneratedItems] = useState<any[]>([]);
-  const [selectedDay, setSelectedDay] = useState<string>(DayOfWeek.MONDAY);
+  const [selectedDay, setSelectedDay] = useState<string>(DAYS_ORDER[0]);
   
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+
+  // Calculate day status based on selected week
+  const startOfWeek = getStartOfWeek(selectedDate);
+  
+  const getDayDate = (dayName: string) => {
+      const index = DAYS_ORDER.indexOf(dayName as DayOfWeek);
+      const d = new Date(startOfWeek);
+      d.setDate(d.getDate() + index);
+      return d;
+  };
+
+  const isDayLocked = (day: string) => isDateInPast(getDayDate(day));
+
+  // Auto-select first valid day when date changes
+  useEffect(() => {
+      const firstValidDay = DAYS_ORDER.find(d => !isDayLocked(d));
+      if (firstValidDay) {
+          setSelectedDay(firstValidDay);
+      } else {
+          // If all days are past (viewing past week), keep default or first but logic will prevent save
+          setSelectedDay(DAYS_ORDER[0]);
+      }
+  }, [selectedDate]);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -74,6 +99,11 @@ export const AIGenerator: React.FC = () => {
   const handleApply = () => {
     if (generatedItems.length === 0) return;
 
+    if (isDayLocked(selectedDay)) {
+        alert("No puedes guardar rutinas en días que ya han pasado. Por favor selecciona un día futuro o cambia la semana.");
+        return;
+    }
+
     const newActivities: Activity[] = generatedItems.map(item => {
         // Create a pictogram entry for it first
         const newPic: PictogramData = {
@@ -107,15 +137,20 @@ export const AIGenerator: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold text-slate-800 flex items-center justify-center gap-2">
-            <Sparkles className="text-yellow-500" />
-            Asistente Mágico
-        </h2>
-        <p className="text-slate-500">
-            Describe una rutina (ej: "Pasos para ir al baño", "Rutina de mañana antes del colegio") y la Inteligencia Artificial buscará los pictogramas de ARASAAC por ti.
-        </p>
+    <div className="max-w-3xl mx-auto space-y-6">
+      
+      {/* Header and Calendar Nav */}
+      <div className="space-y-4">
+          <div className="text-center space-y-2">
+            <h2 className="text-3xl font-bold text-slate-800 flex items-center justify-center gap-2">
+                <Sparkles className="text-yellow-500" />
+                Asistente Mágico
+            </h2>
+            <p className="text-slate-500 max-w-lg mx-auto">
+                Describe una rutina y la IA creará los pictogramas. Selecciona la semana correcta abajo para guardar.
+            </p>
+          </div>
+          <CalendarNavigation />
       </div>
 
       <div className="bg-white p-6 rounded-2xl shadow-lg border space-y-4">
@@ -130,7 +165,7 @@ export const AIGenerator: React.FC = () => {
             <button 
                 onClick={handleGenerate}
                 disabled={loading || !prompt}
-                className="bg-brand-primary text-white px-6 py-2 rounded-full font-bold flex items-center gap-2 disabled:opacity-50"
+                className="bg-brand-primary text-white px-6 py-2 rounded-full font-bold flex items-center gap-2 disabled:opacity-50 transition-all hover:bg-brand-secondary"
             >
                 {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={18} />}
                 Generar Rutina
@@ -172,20 +207,42 @@ export const AIGenerator: React.FC = () => {
                 ))}
             </div>
 
-            <div className="flex items-center gap-4 bg-white/50 p-4 rounded-xl">
-                <span className="text-sm font-bold text-purple-800">Agregar al día:</span>
-                <select 
-                    value={selectedDay}
-                    onChange={(e) => setSelectedDay(e.target.value)}
-                    className="border-none bg-white rounded px-3 py-1 font-bold text-slate-700 focus:ring-0"
-                >
-                    {DAYS_ORDER.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+            <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/50 p-4 rounded-xl">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <span className="text-sm font-bold text-purple-800 whitespace-nowrap">Guardar en:</span>
+                    <div className="relative w-full">
+                        <select 
+                            value={selectedDay}
+                            onChange={(e) => setSelectedDay(e.target.value)}
+                            className="w-full appearance-none bg-white border border-purple-200 text-slate-900 rounded-lg pl-3 pr-8 py-2 font-bold focus:ring-2 focus:ring-purple-500 outline-none cursor-pointer"
+                        >
+                            {DAYS_ORDER.map(d => {
+                                const locked = isDayLocked(d);
+                                return (
+                                    <option key={d} value={d} disabled={locked} className={locked ? "text-slate-400" : "text-slate-900"}>
+                                        {d} {locked ? '(Pasado)' : ''}
+                                    </option>
+                                )
+                            })}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-purple-600">
+                           <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                {isDayLocked(selectedDay) && (
+                     <span className="text-xs text-red-500 font-bold flex items-center gap-1 bg-red-50 px-2 py-1 rounded">
+                        <Lock size={12} /> Día pasado
+                     </span>
+                )}
+
                 <button 
                     onClick={handleApply}
-                    className="ml-auto bg-purple-600 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-purple-700"
+                    disabled={isDayLocked(selectedDay)}
+                    className="w-full sm:w-auto ml-auto bg-purple-600 text-white px-6 py-2 rounded-full text-sm font-bold flex items-center justify-center gap-2 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
                 >
-                    Guardar <ArrowRight size={16} />
+                    Confirmar y Guardar <ArrowRight size={16} />
                 </button>
             </div>
           </div>

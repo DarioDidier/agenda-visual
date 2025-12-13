@@ -3,15 +3,17 @@ import { useApp } from '../context/AppContext';
 import { DayOfWeek, UserMode, Activity, PictogramData } from '../types';
 import { DAYS_ORDER } from '../constants';
 import { PictogramCard } from '../components/PictogramCard';
-import { Plus, ChevronLeft, ChevronRight, Grid, List, Copy, Trash2, CalendarDays, AlertTriangle, X, Check } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Grid, List, Copy, Trash2, CalendarDays, AlertTriangle, X, Check, Lock, History } from 'lucide-react';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
 import { ActivityEditModal } from '../components/ActivityEditModal';
 import { CopyDayModal } from '../components/CopyDayModal';
 import { CongratulationModal } from '../components/CongratulationModal';
+import { CalendarNavigation } from '../components/CalendarNavigation';
+import { isSameWeek, getStartOfWeek, isDateInPast } from '../utils/dateUtils';
 
 export const ScheduleView: React.FC = () => {
-  const { schedule, setSchedule, mode, pictograms, settings, updateActivity, deleteActivity, copyRoutine } = useApp();
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0); // For mobile/focused view
+  const { schedule, setSchedule, mode, pictograms, settings, updateActivity, deleteActivity, copyRoutine, selectedDate, goToToday } = useApp();
+  const [selectedDayIndex, setSelectedDayIndex] = useState(new Date().getDay() === 0 ? 6 : new Date().getDay() - 1); // Default to today's index (Mon=0)
   const [viewFormat, setViewFormat] = useState<'linear' | 'grid'>('grid');
   const [showCongratulation, setShowCongratulation] = useState(false);
   
@@ -29,6 +31,7 @@ export const ScheduleView: React.FC = () => {
   } | null>(null);
 
   const currentDay = DAYS_ORDER[selectedDayIndex];
+  const startOfWeekDate = getStartOfWeek(selectedDate);
 
   // Logic to trigger congratulations in Child Mode
   useEffect(() => {
@@ -42,6 +45,18 @@ export const ScheduleView: React.FC = () => {
       }
     }
   }, [schedule, currentDay, mode]);
+
+  // Ensure Child Mode always starts on "Today" week
+  useEffect(() => {
+      if (mode === UserMode.CHILD && !isSameWeek(selectedDate, new Date())) {
+          goToToday();
+      }
+      // Set correct day tab index based on real day
+      if (mode === UserMode.CHILD) {
+           const todayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+           setSelectedDayIndex(todayIndex);
+      }
+  }, [mode]);
 
   const handleAddActivity = (day: string) => {
     setEditingDay(day);
@@ -109,6 +124,16 @@ export const ScheduleView: React.FC = () => {
 
   const getPictogram = (id: string) => pictograms.find(p => p.id === id) || pictograms[0];
 
+  // Helper to check if a specific day column is in the past
+  const getDayStatus = (dayIndex: number) => {
+      const dayDate = new Date(startOfWeekDate);
+      dayDate.setDate(dayDate.getDate() + dayIndex);
+      return {
+          isPast: isDateInPast(dayDate),
+          date: dayDate
+      };
+  };
+
   // Child Mode View
   if (mode === UserMode.CHILD) {
     return (
@@ -147,6 +172,8 @@ export const ScheduleView: React.FC = () => {
                             activity={activity} 
                             pictogram={getPictogram(activity.pictogramId)} 
                             day={currentDay}
+                            // In Child mode, we typically just check items off, so readOnly isn't strictly necessary 
+                            // for logic, but we don't show edit controls anyway.
                         />
                     ))}
                  </div>
@@ -163,91 +190,116 @@ export const ScheduleView: React.FC = () => {
   // Adult Mode View
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-            <h2 className="text-2xl font-bold text-slate-800">Planificador Semanal</h2>
-            <p className="text-slate-500 text-sm">Organiza las rutinas de la semana</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h2 className="text-2xl font-bold text-slate-800">Planificador Semanal</h2>
+                <p className="text-slate-500 text-sm">Organiza las rutinas de la semana</p>
+            </div>
+            
+            <div className="flex bg-white p-1 rounded-lg border shadow-sm self-start">
+                <button 
+                    onClick={() => setViewFormat('grid')}
+                    className={`p-2 rounded ${viewFormat === 'grid' ? 'bg-slate-100 text-brand-primary' : 'text-slate-400'}`}
+                >
+                    <Grid size={20} />
+                </button>
+                <button 
+                    onClick={() => setViewFormat('linear')}
+                    className={`p-2 rounded ${viewFormat === 'linear' ? 'bg-slate-100 text-brand-primary' : 'text-slate-400'}`}
+                >
+                    <List size={20} />
+                </button>
+            </div>
         </div>
-        
-        <div className="flex bg-white p-1 rounded-lg border shadow-sm self-start">
-            <button 
-                onClick={() => setViewFormat('grid')}
-                className={`p-2 rounded ${viewFormat === 'grid' ? 'bg-slate-100 text-brand-primary' : 'text-slate-400'}`}
-            >
-                <Grid size={20} />
-            </button>
-            <button 
-                onClick={() => setViewFormat('linear')}
-                className={`p-2 rounded ${viewFormat === 'linear' ? 'bg-slate-100 text-brand-primary' : 'text-slate-400'}`}
-            >
-                <List size={20} />
-            </button>
-        </div>
+
+        {/* Date Navigation */}
+        <CalendarNavigation />
       </div>
 
       <div className={`${viewFormat === 'grid' ? 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6' : 'flex flex-col gap-8'}`}>
-        {DAYS_ORDER.map((day) => (
-            <div key={day} className="bg-white rounded-2xl border shadow-sm p-4 flex flex-col group/day relative">
+        {DAYS_ORDER.map((day, idx) => {
+            const { isPast } = getDayStatus(idx);
+            
+            return (
+            <div key={day} className={`bg-white rounded-2xl border shadow-sm p-4 flex flex-col group/day relative ${isPast ? 'bg-slate-50' : ''}`}>
                 <div className="flex justify-between items-center mb-4 pb-2 border-b">
-                    <h3 className="font-bold text-lg text-slate-700">{day}</h3>
+                    <div>
+                        <h3 className={`font-bold text-lg ${isPast ? 'text-slate-500' : 'text-slate-700'}`}>{day}</h3>
+                        {isPast && <span className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1"><History size={10} /> Día Pasado</span>}
+                    </div>
+                    
                     <div className="flex gap-1">
-                      {/* Copy Routine Button */}
+                      {/* Copy Routine Button (Allowed even in past, to copy FROM) */}
                       <button
                         onClick={() => setCopyingDay(day)}
                         className="p-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200 transition-colors"
-                        title="Copiar rutina"
+                        title="Copiar rutina a otro día"
                         disabled={!schedule[day] || schedule[day].length === 0}
                       >
                          <Copy size={16} />
                       </button>
 
-                      {/* Clear Day Button */}
-                       <button
-                        onClick={() => handleRequestClearDay(day)}
-                        className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
-                        title="Borrar TODO el día"
-                        disabled={!schedule[day] || schedule[day].length === 0}
-                      >
-                         <Trash2 size={16} />
-                      </button>
+                      {!isPast && (
+                          <>
+                            {/* Clear Day Button */}
+                            <button
+                                onClick={() => handleRequestClearDay(day)}
+                                className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors"
+                                title="Borrar TODO el día"
+                                disabled={!schedule[day] || schedule[day].length === 0}
+                            >
+                                <Trash2 size={16} />
+                            </button>
 
-                      <button 
-                          onClick={() => handleAddActivity(day)}
-                          className="ml-2 p-1.5 bg-brand-primary text-white rounded-lg hover:bg-brand-secondary transition-colors shadow-sm"
-                          title="Agregar Actividad"
-                      >
-                          <Plus size={18} />
-                      </button>
+                            <button 
+                                onClick={() => handleAddActivity(day)}
+                                className="ml-2 p-1.5 bg-brand-primary text-white rounded-lg hover:bg-brand-secondary transition-colors shadow-sm"
+                                title="Agregar Actividad"
+                            >
+                                <Plus size={18} />
+                            </button>
+                          </>
+                      )}
+                      
+                      {isPast && (
+                          <div className="p-1.5 text-slate-300" title="No se puede editar días pasados">
+                              <Lock size={16} />
+                          </div>
+                      )}
                     </div>
                 </div>
 
                 <div className={`space-y-3 min-h-[120px] ${viewFormat === 'linear' ? 'flex flex-row space-y-0 space-x-4 overflow-x-auto pb-4' : ''}`}>
                     {(!schedule[day] || schedule[day].length === 0) && (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-300 py-6 border-2 border-dashed border-slate-100 rounded-xl">
+                        <div className={`flex flex-col items-center justify-center h-full text-slate-300 py-6 border-2 border-dashed ${isPast ? 'border-slate-200 bg-slate-50' : 'border-slate-100'} rounded-xl`}>
                             <span className="text-xs italic">Sin actividades</span>
-                            <button 
-                                onClick={() => handleAddActivity(day)}
-                                className="mt-2 text-xs font-bold text-brand-primary hover:underline"
-                            >
-                                + Agregar
-                            </button>
+                            {!isPast && (
+                                <button 
+                                    onClick={() => handleAddActivity(day)}
+                                    className="mt-2 text-xs font-bold text-brand-primary hover:underline"
+                                >
+                                    + Agregar
+                                </button>
+                            )}
                         </div>
                     )}
-                    {schedule[day]?.map((activity, idx) => (
+                    {schedule[day]?.map((activity, actIdx) => (
                         <div key={activity.id} className={viewFormat === 'linear' ? 'min-w-[150px]' : ''}>
                              <PictogramCard 
                                 activity={activity} 
                                 pictogram={getPictogram(activity.pictogramId)}
+                                readOnly={isPast} // Locks individual card
                                 onDelete={() => handleRequestDeleteActivity(day, activity.id)}
                                 onEdit={() => setActivityToEdit({ day, activity })}
-                                onMoveUp={() => moveActivity(day, idx, 'up')}
-                                onMoveDown={() => moveActivity(day, idx, 'down')}
+                                onMoveUp={() => moveActivity(day, actIdx, 'up')}
+                                onMoveDown={() => moveActivity(day, actIdx, 'down')}
                             />
                         </div>
                     ))}
                 </div>
             </div>
-        ))}
+        )})}
       </div>
 
       {isSelectorOpen && (
