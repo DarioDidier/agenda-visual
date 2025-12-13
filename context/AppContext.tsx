@@ -73,12 +73,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('mav_settings');
-    return saved ? JSON.parse(saved) : {
+    const parsed = saved ? JSON.parse(saved) : {};
+    return {
       highContrast: false,
       showText: true,
       voiceEnabled: true,
       autoSpeak: true,
-      pin: '1234' // Default PIN
+      pin: '1234', // Default PIN
+      securityQuestion: '¿Cuál es el nombre de tu primera mascota?',
+      securityAnswer: '',
+      ...parsed // Override defaults with saved values
     };
   });
 

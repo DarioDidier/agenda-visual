@@ -1,18 +1,25 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserMode } from '../types';
-import { Settings, Users, Calendar, Sparkles, LogOut, Baby, Lock, X, Check, Delete, ChevronLeft } from 'lucide-react';
+import { Settings, Users, Calendar, Sparkles, LogOut, Baby, Lock, X, Check, Delete, ChevronLeft, ShieldCheck } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { mode, setMode, settings } = useApp();
+  const { mode, setMode, settings, updateSettings } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Modal State
   const [showExitModal, setShowExitModal] = useState(false);
+  const [modalView, setModalView] = useState<'PIN' | 'RECOVERY'>('PIN');
   
   // PIN State
   const [enteredPin, setEnteredPin] = useState('');
   const [pinError, setPinError] = useState(false);
+
+  // Recovery State
+  const [recoveryAnswer, setRecoveryAnswer] = useState('');
+  const [recoveryError, setRecoveryError] = useState(false);
 
   const isActive = (path: string) => location.pathname === path ? 'bg-brand-primary text-white shadow-md' : 'text-slate-500 hover:bg-slate-100';
 
@@ -23,10 +30,17 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       navigate('/'); 
     } else {
       // Show confirmation modal for exiting Child Mode
-      setEnteredPin('');
-      setPinError(false);
+      resetModalState();
       setShowExitModal(true);
     }
+  };
+
+  const resetModalState = () => {
+      setEnteredPin('');
+      setPinError(false);
+      setModalView('PIN');
+      setRecoveryAnswer('');
+      setRecoveryError(false);
   };
 
   const handlePinInput = (num: string) => {
@@ -57,6 +71,20 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       } else {
           setPinError(true);
           setTimeout(() => setEnteredPin(''), 500);
+      }
+  };
+
+  const handleRecoverySubmit = () => {
+      if (!settings.securityAnswer) return;
+
+      if (recoveryAnswer.trim().toLowerCase() === settings.securityAnswer.trim().toLowerCase()) {
+          // Correct answer
+          updateSettings({ pin: '1234' }); // Reset PIN
+          alert("Respuesta correcta. Tu PIN ha sido restablecido a 1234.");
+          setMode(UserMode.ADULT);
+          setShowExitModal(false);
+      } else {
+          setRecoveryError(true);
       }
   };
 
@@ -142,50 +170,99 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       <div className="w-9" /> {/* Spacer */}
                   </div>
                   
-                  {/* PIN Dots Display */}
-                  <div className="flex justify-center gap-4 mb-8">
-                      {[0, 1, 2, 3].map((i) => (
-                          <div 
-                            key={i} 
-                            className={`w-4 h-4 rounded-full transition-all duration-300 ${
-                                i < enteredPin.length 
-                                    ? (pinError ? 'bg-red-500 scale-110' : 'bg-brand-primary scale-110') 
-                                    : 'bg-slate-200'
-                            }`}
+                  {modalView === 'PIN' ? (
+                      <>
+                        {/* PIN Dots Display */}
+                        <div className="flex justify-center gap-4 mb-8">
+                            {[0, 1, 2, 3].map((i) => (
+                                <div 
+                                    key={i} 
+                                    className={`w-4 h-4 rounded-full transition-all duration-300 ${
+                                        i < enteredPin.length 
+                                            ? (pinError ? 'bg-red-500 scale-110' : 'bg-brand-primary scale-110') 
+                                            : 'bg-slate-200'
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                        
+                        {/* Keypad */}
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                                <button
+                                    key={num}
+                                    onClick={() => handlePinInput(num.toString())}
+                                    className="h-14 w-full rounded-2xl bg-slate-50 text-xl font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200"
+                                >
+                                    {num}
+                                </button>
+                            ))}
+                            <div className="h-14" /> {/* Empty Slot */}
+                            <button
+                                onClick={() => handlePinInput('0')}
+                                className="h-14 w-full rounded-2xl bg-slate-50 text-xl font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200"
+                            >
+                                0
+                            </button>
+                            <button
+                                onClick={handlePinDelete}
+                                className="h-14 w-full rounded-2xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 active:scale-95 transition-all"
+                            >
+                                <Delete size={24} />
+                            </button>
+                        </div>
+                        
+                        {pinError && (
+                            <p className="text-red-500 text-sm font-bold animate-pulse">PIN Incorrecto</p>
+                        )}
+                        
+                        {settings.securityAnswer && (
+                            <button 
+                                onClick={() => setModalView('RECOVERY')}
+                                className="mt-4 text-xs text-brand-primary hover:underline font-medium"
+                            >
+                                ¿Olvidaste tu PIN?
+                            </button>
+                        )}
+                      </>
+                  ) : (
+                      // Recovery View
+                      <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+                          <div className="mb-4 text-left bg-blue-50 p-3 rounded-xl border border-blue-100">
+                              <p className="text-xs text-blue-600 font-bold uppercase mb-1">Pregunta de Seguridad:</p>
+                              <p className="text-sm text-slate-700 font-medium leading-tight">
+                                  {settings.securityQuestion || '¿Pregunta no definida?'}
+                              </p>
+                          </div>
+
+                          <input 
+                              type="text" 
+                              value={recoveryAnswer}
+                              onChange={(e) => { setRecoveryAnswer(e.target.value); setRecoveryError(false); }}
+                              placeholder="Tu respuesta..."
+                              className="w-full p-3 bg-slate-50 border rounded-xl mb-4 focus:ring-2 focus:ring-brand-primary outline-none"
+                              autoFocus
                           />
-                      ))}
-                  </div>
-                  
-                  {/* Keypad */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                          <button
-                            key={num}
-                            onClick={() => handlePinInput(num.toString())}
-                            className="h-14 w-full rounded-2xl bg-slate-50 text-xl font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200"
+
+                          {recoveryError && (
+                              <p className="text-red-500 text-sm font-bold mb-4 animate-pulse">Respuesta incorrecta</p>
+                          )}
+
+                          <button 
+                              onClick={handleRecoverySubmit}
+                              className="w-full py-3 bg-brand-primary text-white font-bold rounded-xl shadow-md hover:bg-brand-secondary mb-3 flex items-center justify-center gap-2"
                           >
-                              {num}
+                              <ShieldCheck size={18} /> Recuperar PIN
                           </button>
-                      ))}
-                      <div className="h-14" /> {/* Empty Slot */}
-                      <button
-                        onClick={() => handlePinInput('0')}
-                        className="h-14 w-full rounded-2xl bg-slate-50 text-xl font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200"
-                      >
-                          0
-                      </button>
-                      <button
-                        onClick={handlePinDelete}
-                        className="h-14 w-full rounded-2xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 active:scale-95 transition-all"
-                      >
-                          <Delete size={24} />
-                      </button>
-                  </div>
-                  
-                  {pinError && (
-                      <p className="text-red-500 text-sm font-bold animate-pulse">PIN Incorrecto</p>
+                          
+                          <button 
+                              onClick={() => setModalView('PIN')}
+                              className="text-sm text-slate-400 hover:text-slate-600 font-medium"
+                          >
+                              Volver
+                          </button>
+                      </div>
                   )}
-                  {!pinError && <p className="text-slate-400 text-xs">Ingresa el PIN (Default: 1234)</p>}
               </div>
           </div>
       )}

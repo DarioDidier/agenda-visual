@@ -81,4 +81,6 @@ export interface AppSettings {
   voiceEnabled: boolean;
   autoSpeak: boolean; // Auto speak when clicking an item
   pin: string; // PIN for Adult mode
+  securityQuestion?: string;
+  securityAnswer?: string;
 }
