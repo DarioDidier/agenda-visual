@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { formatDateRange, isSameWeek, toLocalDateString } from '../utils/dateUtils';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, RotateCcw, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCcw, ChevronDown } from 'lucide-react';
 
 export const CalendarNavigation: React.FC = () => {
   const { selectedDate, setSelectedDate, goToToday } = useApp();
@@ -33,6 +33,21 @@ export const CalendarNavigation: React.FC = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border p-2 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2">
+        {/* Helper style to force the calendar picker indicator to cover the full input area on WebKit browsers */}
+        <style>{`
+            .date-input-overlay::-webkit-calendar-picker-indicator {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                cursor: pointer;
+                opacity: 0;
+            }
+        `}</style>
+
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
             <button 
                 onClick={handlePrevWeek}
@@ -65,18 +80,22 @@ export const CalendarNavigation: React.FC = () => {
         <div className="flex items-center gap-2 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0">
             <div className="relative flex-1 sm:flex-none group">
                 {/* Visual Button */}
-                <button className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium text-sm transition-colors w-full sm:w-auto">
-                    <CalendarIcon size={16} />
+                <button 
+                    type="button"
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-sm transition-colors w-full sm:w-auto pointer-events-none"
+                >
                     <span>Ir a Fecha</span>
-                    <ChevronDown size={14} className="text-slate-400" />
+                    <ChevronDown size={16} className="text-slate-500 group-hover:text-slate-700 transition-colors" />
                 </button>
                 
-                {/* Invisible Input Overlay - Added z-10 to ensure it sits on top */}
+                {/* Invisible Input Overlay with special class for picker expansion */}
                 <input 
                     type="date" 
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10 date-input-overlay"
                     onChange={handleDateChange}
                     value={toLocalDateString(selectedDate)}
+                    title="Seleccionar fecha"
+                    aria-label="Ir a fecha"
                 />
             </div>
             
