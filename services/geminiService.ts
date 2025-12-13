@@ -7,9 +7,13 @@ import { Category } from "../types";
 export const generateRoutine = async (query: string): Promise<any[]> => {
   try {
     const apiKey = process.env.API_KEY;
+    
+    // Debugging check for Vercel deployment
     if (!apiKey) {
-        console.error("API Key not found");
+        console.warn("Gemini API Key is missing or empty. Please check your Vercel Environment Variables (API_KEY).");
         return [];
+    } else {
+        console.log("Gemini Service initialized with API Key present.");
     }
 
     const ai = new GoogleGenAI({ apiKey });
