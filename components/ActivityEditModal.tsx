@@ -78,7 +78,7 @@ export const ActivityEditModal: React.FC<Props> = ({ activity, onSave, onClose }
                     type="time" 
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-brand-primary outline-none"
+                    className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none bg-white text-slate-900"
                 />
             </div>
             
@@ -90,7 +90,7 @@ export const ActivityEditModal: React.FC<Props> = ({ activity, onSave, onClose }
                     type="text" 
                     value={customLabel}
                     onChange={(e) => setCustomLabel(e.target.value)}
-                    className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-brand-primary outline-none"
+                    className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none bg-white text-slate-900"
                 />
             </div>
         </div>

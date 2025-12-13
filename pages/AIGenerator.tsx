@@ -123,7 +123,7 @@ export const AIGenerator: React.FC = () => {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Ej: Crear una rutina para calmarse cuando está enojado..."
-            className="w-full p-4 border rounded-xl h-32 focus:ring-2 focus:ring-brand-primary outline-none resize-none"
+            className="w-full p-4 border border-slate-300 rounded-xl h-32 focus:ring-2 focus:ring-brand-primary outline-none resize-none bg-white text-slate-900 placeholder:text-slate-400"
         />
         
         <div className="flex justify-end">

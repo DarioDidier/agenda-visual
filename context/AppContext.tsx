@@ -48,11 +48,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ];
   });
 
-  const [settings, setSettings] = useState<AppSettings>({
-    highContrast: false,
-    showText: true,
-    voiceEnabled: true,
-    autoSpeak: true,
+  const [settings, setSettings] = useState<AppSettings>(() => {
+    const saved = localStorage.getItem('mav_settings');
+    const defaults = {
+      highContrast: false,
+      showText: true,
+      voiceEnabled: true,
+      autoSpeak: true,
+      pin: '1234', // Default PIN
+      securityQuestion: '¿Nombre de tu primera mascota?',
+      securityAnswer: 'firulais'
+    };
+    return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
   });
 
   // Persistence
@@ -65,12 +72,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [schedule]);
 
   useEffect(() => {
-    localStorage.setItem('mav_people', JSON.stringify(peoplePlaces));
+    try {
+        localStorage.setItem('mav_people', JSON.stringify(peoplePlaces));
+    } catch (e) {
+        console.error("Local Storage Full", e);
+        alert("¡Atención! No hay espacio suficiente para guardar más fotos grandes. Intenta usar imágenes más pequeñas.");
+    }
   }, [peoplePlaces]);
 
   useEffect(() => {
     localStorage.setItem('mav_pictograms', JSON.stringify(pictograms));
   }, [pictograms]);
+
+  useEffect(() => {
+    localStorage.setItem('mav_settings', JSON.stringify(settings));
+  }, [settings]);
 
   const addPictogram = (pic: PictogramData) => {
     setPictograms(prev => {

@@ -1,14 +1,24 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserMode } from '../types';
-import { Settings, Users, Calendar, Sparkles, LogOut, Baby, Lock, X, Check } from 'lucide-react';
+import { Settings, Users, Calendar, Sparkles, LogOut, Baby, Lock, X, Check, Delete, ChevronLeft, KeyRound, ArrowRight } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { mode, setMode } = useApp();
+  const { mode, setMode, settings, updateSettings } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
   const [showExitModal, setShowExitModal] = useState(false);
+  
+  // PIN State
+  const [enteredPin, setEnteredPin] = useState('');
+  const [pinError, setPinError] = useState(false);
+
+  // Recovery State
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [recoveryAnswer, setRecoveryAnswer] = useState('');
+  const [recoveryError, setRecoveryError] = useState(false);
+  const [recoverySuccess, setRecoverySuccess] = useState(false);
 
   const isActive = (path: string) => location.pathname === path ? 'bg-brand-primary text-white shadow-md' : 'text-slate-500 hover:bg-slate-100';
 
@@ -19,13 +29,62 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       navigate('/'); 
     } else {
       // Show confirmation modal for exiting Child Mode
+      setEnteredPin('');
+      setPinError(false);
+      setIsRecoveryMode(false);
+      setRecoveryAnswer('');
+      setRecoveryError(false);
+      setRecoverySuccess(false);
       setShowExitModal(true);
     }
   };
 
-  const confirmExitChildMode = () => {
-      setMode(UserMode.ADULT);
-      setShowExitModal(false);
+  const handlePinInput = (num: string) => {
+    if (enteredPin.length < 4) {
+        const newPin = enteredPin + num;
+        setEnteredPin(newPin);
+        setPinError(false);
+        
+        // Auto submit on 4th digit
+        if (newPin.length === 4) {
+            validatePin(newPin);
+        }
+    }
+  };
+
+  const handlePinDelete = () => {
+      setEnteredPin(prev => prev.slice(0, -1));
+      setPinError(false);
+  };
+
+  const validatePin = (pinToCheck: string) => {
+      if (pinToCheck === settings.pin) {
+          setTimeout(() => {
+              setMode(UserMode.ADULT);
+              setShowExitModal(false);
+              setEnteredPin('');
+          }, 200);
+      } else {
+          setPinError(true);
+          setTimeout(() => setEnteredPin(''), 500);
+      }
+  };
+
+  const handleRecoverySubmit = () => {
+      if (!settings.securityAnswer) return;
+
+      if (recoveryAnswer.trim().toLowerCase() === settings.securityAnswer.toLowerCase()) {
+          setRecoverySuccess(true);
+          // Reset PIN to default
+          updateSettings({ pin: '1234' });
+          
+          setTimeout(() => {
+              setMode(UserMode.ADULT);
+              setShowExitModal(false);
+          }, 1500);
+      } else {
+          setRecoveryError(true);
+      }
   };
 
   return (
@@ -96,35 +155,123 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </div>
       </nav>
 
-      {/* Exit Child Mode Modal */}
+      {/* PIN / Exit Modal */}
       {showExitModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-              <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-sm w-full space-y-6 text-center border-4 border-slate-100 transform scale-100 animate-in zoom-in-95 duration-200">
-                  <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Lock size={32} />
+              <div className="bg-white rounded-3xl shadow-2xl p-6 max-w-xs w-full text-center border-4 border-slate-100 transform scale-100 animate-in zoom-in-95 duration-200">
+                  <div className="flex justify-between items-center mb-6">
+                      <button onClick={() => setShowExitModal(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full">
+                          <X size={20} />
+                      </button>
+                      <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                          <Lock size={18} className="text-brand-primary" /> 
+                          {isRecoveryMode ? 'Recuperar Acceso' : 'Acceso Adulto'}
+                      </h3>
+                      <div className="w-9" />
                   </div>
                   
-                  <div className="space-y-2">
-                      <h3 className="text-2xl font-bold text-slate-800">¿Salir del Modo Niño?</h3>
-                      <p className="text-slate-500">
-                          Volverás a la vista de edición para padres y maestros.
-                      </p>
-                  </div>
+                  {!isRecoveryMode ? (
+                    <>
+                        {/* PIN Dots Display */}
+                        <div className="flex justify-center gap-4 mb-8">
+                            {[0, 1, 2, 3].map((i) => (
+                                <div 
+                                    key={i} 
+                                    className={`w-4 h-4 rounded-full transition-all duration-300 ${
+                                        i < enteredPin.length 
+                                            ? (pinError ? 'bg-red-500 scale-110' : 'bg-brand-primary scale-110') 
+                                            : 'bg-slate-200'
+                                    }`}
+                                />
+                            ))}
+                        </div>
+                        
+                        {/* Keypad */}
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                                <button
+                                    key={num}
+                                    onClick={() => handlePinInput(num.toString())}
+                                    className="h-14 w-full rounded-2xl bg-slate-50 text-xl font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200"
+                                >
+                                    {num}
+                                </button>
+                            ))}
+                            <div className="h-14" />
+                            <button
+                                onClick={() => handlePinInput('0')}
+                                className="h-14 w-full rounded-2xl bg-slate-50 text-xl font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200"
+                            >
+                                0
+                            </button>
+                            <button
+                                onClick={handlePinDelete}
+                                className="h-14 w-full rounded-2xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 active:scale-95 transition-all"
+                            >
+                                <Delete size={24} />
+                            </button>
+                        </div>
+                        
+                        {pinError && (
+                            <p className="text-red-500 text-sm font-bold animate-pulse">PIN Incorrecto</p>
+                        )}
+                        
+                        <div className="mt-4 pt-4 border-t">
+                            <button 
+                                onClick={() => setIsRecoveryMode(true)}
+                                className="text-sm text-brand-primary hover:underline font-medium"
+                            >
+                                ¿Olvidaste el PIN?
+                            </button>
+                        </div>
+                    </>
+                  ) : (
+                    // Recovery View
+                    <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+                         {!recoverySuccess ? (
+                             <>
+                                <div className="p-3 bg-blue-50 rounded-xl text-left border border-blue-100">
+                                    <p className="text-xs text-blue-600 font-bold uppercase mb-1">Pregunta de Seguridad:</p>
+                                    <p className="text-slate-800 font-medium">{settings.securityQuestion || "¿Sin pregunta configurada?"}</p>
+                                </div>
 
-                  <div className="grid grid-cols-2 gap-3 pt-2">
-                      <button 
-                          onClick={() => setShowExitModal(false)}
-                          className="py-3 px-4 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
-                      >
-                          <X size={20} /> Cancelar
-                      </button>
-                      <button 
-                          onClick={confirmExitChildMode}
-                          className="py-3 px-4 bg-brand-primary text-white font-bold rounded-xl hover:bg-brand-secondary transition-colors shadow-lg shadow-brand-primary/30 flex items-center justify-center gap-2"
-                      >
-                          <Check size={20} /> Salir
-                      </button>
-                  </div>
+                                <div>
+                                    <input 
+                                        type="text" 
+                                        value={recoveryAnswer}
+                                        onChange={(e) => { setRecoveryAnswer(e.target.value); setRecoveryError(false); }}
+                                        placeholder="Escribe tu respuesta..."
+                                        className="w-full p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-brand-primary outline-none bg-white text-slate-900 placeholder:text-slate-400"
+                                    />
+                                    {recoveryError && <p className="text-red-500 text-xs mt-1 font-bold">Respuesta incorrecta</p>}
+                                </div>
+
+                                <button 
+                                    onClick={handleRecoverySubmit}
+                                    className="w-full py-3 bg-brand-primary text-white font-bold rounded-xl shadow-lg hover:bg-brand-secondary transition-all active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    Restablecer PIN <ArrowRight size={18} />
+                                </button>
+
+                                <button 
+                                    onClick={() => setIsRecoveryMode(false)}
+                                    className="text-slate-400 hover:text-slate-600 text-sm mt-2"
+                                >
+                                    Volver al PIN
+                                </button>
+                             </>
+                         ) : (
+                             <div className="py-6 flex flex-col items-center">
+                                 <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4 animate-bounce">
+                                     <Check size={32} />
+                                 </div>
+                                 <h4 className="text-xl font-bold text-slate-800">¡Correcto!</h4>
+                                 <p className="text-slate-500 text-sm mt-1">El PIN se ha restablecido a <span className="font-mono font-bold text-slate-800">1234</span></p>
+                             </div>
+                         )}
+                    </div>
+                  )}
+                  
               </div>
           </div>
       )}
