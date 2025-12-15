@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserMode } from '../types';
-import { Settings, Users, Calendar, Sparkles, LogOut, Baby, Lock, X, Check, Delete, ChevronLeft, ShieldCheck, HelpCircle } from 'lucide-react';
+import { Settings, Users, Calendar, LogOut, Baby, Lock, X, Delete, ShieldCheck, HelpCircle } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -148,13 +148,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 <Calendar size={24} />
                 <span className="text-xs font-medium mt-1">Agenda</span>
             </Link>
-
-            {mode === UserMode.ADULT && (
-                 <Link to="/generator" className={`flex flex-col items-center p-2 rounded-xl transition-all ${isActive('/generator')}`}>
-                    <Sparkles size={24} className="text-yellow-500" />
-                    <span className="text-xs font-medium mt-1">IA</span>
-                </Link>
-            )}
 
             <Link to="/people" className={`flex flex-col items-center p-2 rounded-xl transition-all ${isActive('/people')}`}>
                 <Users size={24} />

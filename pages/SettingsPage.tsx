@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { ToggleLeft, ToggleRight, Volume2, Type, Eye, Lock, ShieldQuestion, Save, Key, CheckCircle } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Volume2, Type, Eye, Lock, ShieldQuestion, Save } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const { settings, updateSettings } = useApp();
@@ -11,15 +11,6 @@ export const SettingsPage: React.FC = () => {
   const [question, setQuestion] = useState(settings.securityQuestion || '¿Cuál es el nombre de tu primera mascota?');
   const [answer, setAnswer] = useState(settings.securityAnswer || '');
   const [isEditingSecurity, setIsEditingSecurity] = useState(false);
-
-  // API Key State
-  const [customApiKey, setCustomApiKey] = useState('');
-  const [showApiInput, setShowApiInput] = useState(false);
-
-  useEffect(() => {
-      const savedKey = localStorage.getItem('mav_custom_api_key');
-      if (savedKey) setCustomApiKey(savedKey);
-  }, []);
 
   const ToggleItem = ({ label, icon: Icon, value, onChange }: any) => (
       <div className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border">
@@ -54,87 +45,11 @@ export const SettingsPage: React.FC = () => {
       alert("Pregunta de seguridad actualizada correctamente.");
   };
 
-  const handleSaveApiKey = () => {
-      localStorage.setItem('mav_custom_api_key', customApiKey.trim());
-      setShowApiInput(false);
-      alert("API Key guardada localmente.");
-  };
-
-  const handleClearApiKey = () => {
-      localStorage.removeItem('mav_custom_api_key');
-      setCustomApiKey('');
-      alert("API Key eliminada del dispositivo.");
-  };
-
   return (
     <div className="max-w-xl mx-auto space-y-6">
       <h2 className="text-2xl font-bold text-slate-800">Ajustes y Accesibilidad</h2>
       
       <div className="space-y-4">
-        {/* API Key Configuration (Emergency Fix) */}
-        <div className="p-4 bg-white rounded-xl shadow-sm border space-y-4 border-l-4 border-l-yellow-400">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-yellow-50 rounded-lg text-yellow-600">
-                        <Key size={24} />
-                    </div>
-                    <div>
-                        <span className="font-medium text-lg text-slate-800 block">Llave de Inteligencia Artificial</span>
-                        <span className="text-xs text-slate-400">Para el Generador Mágico (Gemini API)</span>
-                    </div>
-                </div>
-                {!showApiInput && (
-                    <button 
-                        onClick={() => setShowApiInput(true)}
-                        className="text-sm text-brand-primary underline font-medium"
-                    >
-                        {customApiKey ? 'Cambiar' : 'Configurar'}
-                    </button>
-                )}
-            </div>
-
-            {showApiInput ? (
-                <div className="animate-in fade-in space-y-3">
-                    <p className="text-xs text-slate-500">
-                        Si la generación automática falla, pega aquí tu API Key de Google Gemini. Se guardará solo en este navegador.
-                    </p>
-                    <input 
-                        type="password"
-                        value={customApiKey}
-                        onChange={(e) => setCustomApiKey(e.target.value)}
-                        placeholder="Pegar API Key aquí..."
-                        className="w-full p-2 border rounded-lg text-sm bg-slate-50 font-mono"
-                    />
-                    <div className="flex justify-end gap-2">
-                        <button 
-                            onClick={() => setShowApiInput(false)}
-                            className="text-slate-500 text-sm font-medium px-2"
-                        >
-                            Cancelar
-                        </button>
-                        {customApiKey && (
-                            <button 
-                                onClick={handleClearApiKey}
-                                className="text-red-500 text-sm font-medium px-2"
-                            >
-                                Borrar
-                            </button>
-                        )}
-                        <button 
-                            onClick={handleSaveApiKey}
-                            className="bg-brand-primary text-white text-sm px-4 py-2 rounded-lg font-bold"
-                        >
-                            Guardar Llave
-                        </button>
-                    </div>
-                </div>
-            ) : customApiKey ? (
-                 <div className="flex items-center gap-2 pl-12">
-                     <CheckCircle size={16} className="text-green-500" />
-                     <span className="text-xs text-green-600 font-bold">Llave configurada manualmente</span>
-                 </div>
-            ) : null}
-        </div>
 
         {/* Security Section */}
         <div className="p-4 bg-white rounded-xl shadow-sm border space-y-4">
