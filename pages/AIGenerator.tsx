@@ -60,9 +60,9 @@ export const AIGenerator: React.FC = () => {
       }));
 
       setGeneratedItems(enhancedItems);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Hubo un error generando la rutina. Intenta de nuevo.");
+      alert(`Error al generar: ${e.message || 'Verifica tu conexión o API Key'}`);
     } finally {
       setLoading(false);
     }

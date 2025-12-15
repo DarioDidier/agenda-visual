@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserMode } from '../types';
-import { Settings, Users, Calendar, Sparkles, LogOut, Baby, Lock, X, Check, Delete, ChevronLeft, ShieldCheck } from 'lucide-react';
+import { Settings, Users, Calendar, Sparkles, LogOut, Baby, Lock, X, Check, Delete, ChevronLeft, ShieldCheck, HelpCircle } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -74,13 +74,27 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       }
   };
 
+  const handleForgotPinClick = () => {
+      if (!settings.securityAnswer) {
+          alert("No has configurado una pregunta de seguridad en los Ajustes. Por defecto el PIN es 1234.");
+          // Optional: Allow emergency reset if strictly needed for demo
+          // updateSettings({ pin: '1234' });
+      } else {
+          setModalView('RECOVERY');
+      }
+  };
+
   const handleRecoverySubmit = () => {
-      if (!settings.securityAnswer) return;
+      // Fallback for strict typescript checks, though button click checks above
+      if (!settings.securityAnswer) {
+          alert("Error: No hay respuesta configurada.");
+          return;
+      }
 
       if (recoveryAnswer.trim().toLowerCase() === settings.securityAnswer.trim().toLowerCase()) {
           // Correct answer
           updateSettings({ pin: '1234' }); // Reset PIN
-          alert("Respuesta correcta. Tu PIN ha sido restablecido a 1234.");
+          alert("¡Correcto! Tu PIN ha sido restablecido a: 1234");
           setMode(UserMode.ADULT);
           setShowExitModal(false);
       } else {
@@ -216,14 +230,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                             <p className="text-red-500 text-sm font-bold animate-pulse">PIN Incorrecto</p>
                         )}
                         
-                        {settings.securityAnswer && (
-                            <button 
-                                onClick={() => setModalView('RECOVERY')}
-                                className="mt-4 text-xs text-brand-primary hover:underline font-medium"
-                            >
-                                ¿Olvidaste tu PIN?
-                            </button>
-                        )}
+                        {/* Forgot PIN Link - Always visible now */}
+                        <button 
+                            onClick={handleForgotPinClick}
+                            className="mt-4 text-xs text-brand-primary hover:underline font-medium flex items-center justify-center gap-1 w-full p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                            <HelpCircle size={14} /> ¿Olvidaste tu PIN?
+                        </button>
                       </>
                   ) : (
                       // Recovery View
@@ -231,7 +244,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                           <div className="mb-4 text-left bg-blue-50 p-3 rounded-xl border border-blue-100">
                               <p className="text-xs text-blue-600 font-bold uppercase mb-1">Pregunta de Seguridad:</p>
                               <p className="text-sm text-slate-700 font-medium leading-tight">
-                                  {settings.securityQuestion || '¿Pregunta no definida?'}
+                                  {settings.securityQuestion || 'No definida'}
                               </p>
                           </div>
 
@@ -239,7 +252,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                               type="text" 
                               value={recoveryAnswer}
                               onChange={(e) => { setRecoveryAnswer(e.target.value); setRecoveryError(false); }}
-                              placeholder="Tu respuesta..."
+                              placeholder="Escribe tu respuesta..."
                               className="w-full p-3 bg-slate-50 border rounded-xl mb-4 focus:ring-2 focus:ring-brand-primary outline-none"
                               autoFocus
                           />
@@ -252,14 +265,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                               onClick={handleRecoverySubmit}
                               className="w-full py-3 bg-brand-primary text-white font-bold rounded-xl shadow-md hover:bg-brand-secondary mb-3 flex items-center justify-center gap-2"
                           >
-                              <ShieldCheck size={18} /> Recuperar PIN
+                              <ShieldCheck size={18} /> Recuperar y Restablecer
                           </button>
                           
                           <button 
                               onClick={() => setModalView('PIN')}
-                              className="text-sm text-slate-400 hover:text-slate-600 font-medium"
+                              className="text-sm text-slate-400 hover:text-slate-600 font-medium p-2"
                           >
-                              Volver
+                              Cancelar y Volver
                           </button>
                       </div>
                   )}
