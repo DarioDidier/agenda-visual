@@ -9,8 +9,15 @@ const getApiKey = (): string => {
         return localKey.trim();
     }
 
-    // 2. Check Process Env (Injected via vite.config define)
-    // The vite.config.ts maps VITE_API_KEY to process.env.API_KEY
+    // 2. Check Standard Vite Env Var (Recommended for browser)
+    // Cast to any to avoid TypeScript errors if types aren't explicitly defined
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const viteEnv = (import.meta as any).env;
+    if (viteEnv && viteEnv.VITE_API_KEY) {
+        return viteEnv.VITE_API_KEY;
+    }
+
+    // 3. Check Process Env (Injected via vite.config define)
     if (process.env.API_KEY) {
         return process.env.API_KEY;
     }
