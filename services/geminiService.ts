@@ -11,9 +11,7 @@ export const generateRoutine = async (query: string): Promise<any[]> => {
     // Debugging check for Vercel deployment
     if (!apiKey) {
         console.warn("Gemini API Key is missing or empty. Please check your Vercel Environment Variables (API_KEY).");
-        return [];
-    } else {
-        console.log("Gemini Service initialized with API Key present.");
+        throw new Error("Falta la API Key. Por favor configura API_KEY en las variables de entorno.");
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -76,7 +74,10 @@ export const generateRoutine = async (query: string): Promise<any[]> => {
     const text = response.text;
     if (!text) return [];
     
-    return JSON.parse(text);
+    // Clean potential markdown fences (fixes issues where model wraps JSON in ```json ... ```)
+    const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    return JSON.parse(cleanedText);
 
   } catch (error) {
     console.error("Error generating routine:", error);
