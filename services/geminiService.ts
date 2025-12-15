@@ -1,16 +1,30 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Category } from "../types";
 
-// This function creates a structured prompt to generate a routine based on a user query
-// and maps it to our internal data structure.
+// Helper to reliably get the API Key from various sources
+const getApiKey = (): string => {
+    // 1. Check Local Storage (User manual entry in Settings)
+    const localKey = localStorage.getItem('mav_custom_api_key');
+    if (localKey && localKey.trim() !== '') {
+        return localKey.trim();
+    }
+
+    // 2. Check Process Env (Injected via vite.config define)
+    // The vite.config.ts maps VITE_API_KEY to process.env.API_KEY
+    if (process.env.API_KEY) {
+        return process.env.API_KEY;
+    }
+
+    return '';
+};
 
 export const generateRoutine = async (query: string): Promise<any[]> => {
   try {
-    const apiKey = process.env.API_KEY;
+    const apiKey = getApiKey();
     
-    // Debugging check for Vercel deployment
+    // Debugging check
     if (!apiKey) {
-        throw new Error("Falta la API Key. Configura VITE_API_KEY o API_KEY en tu entorno.");
+        throw new Error("Falta la API Key. Ve a 'Ajustes' para ingresarla manualmente, o configura VITE_API_KEY en tu entorno.");
     }
 
     const ai = new GoogleGenAI({ apiKey });
