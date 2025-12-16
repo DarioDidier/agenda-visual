@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Activity, SavedRoutine, TimePeriod, PictogramData } from '../types';
-import { X, Book, Download, Upload, Trash2, PlusCircle, Check, Sun, Sunset, Moon, Plus, ArrowUp, ArrowDown, Clock, ChevronDown, FileJson, FileUp } from 'lucide-react';
+import { X, Book, Download, Upload, Trash2, PlusCircle, Check, Copy, Sun, Sunset, Moon, Plus, ArrowUp, ArrowDown, Clock, ChevronDown, FileJson, FileUp } from 'lucide-react';
 import { PictogramIcon } from './PictogramIcon';
 import { PictogramSelectorModal } from './PictogramSelectorModal';
 import { getArasaacImageUrl } from '../services/arasaacService';
@@ -122,30 +122,47 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
       try {
           const json = JSON.stringify(routine, null, 2);
           const fileName = getSafeFileName(routine.name);
-          
-          // FIX ANDROID: Usar Data URI en lugar de Blob.
-          // Los Blobs a veces fallan en WebViews de Android al intentar abrir la URL interna.
-          // encodeURIComponent asegura que los caracteres especiales (tildes, ñ) se guarden bien.
-          const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+
+          // ANDROID FIX:
+          // 1. Usar Blob con 'application/octet-stream' fuerza la descarga como archivo binario
+          //    evitando que el navegador intente abrirlo y crashee.
+          const blob = new Blob([json], { type: "application/octet-stream" });
+          const url = window.URL.createObjectURL(blob);
           
           const link = document.createElement('a');
-          link.href = dataUri;
+          link.href = url;
           link.download = fileName;
           link.style.display = 'none';
+          
+          // 2. target="_blank" ayuda en algunas WebViews a manejar el intent de descarga sin cerrar la app
+          link.target = '_blank';
           
           document.body.appendChild(link);
           link.click();
           
-          // Cleanup
+          // 3. Timeout extendido (2000ms) es CRÍTICO en Android.
+          // Si revocamos la URL antes de que el Download Manager del sistema la tome, falla o crashea.
           setTimeout(() => {
-              document.body.removeChild(link);
-          }, 100);
+              if (document.body.contains(link)) {
+                document.body.removeChild(link);
+              }
+              window.URL.revokeObjectURL(url);
+          }, 2000);
           
-          // Show success modal
           setShowDownloadSuccess(true);
       } catch (e) {
           console.error("Download failed", e);
-          alert("No se pudo generar el archivo de descarga.");
+          alert("No se pudo iniciar la descarga. Por favor intenta usar el botón de 'Copiar' al lado.");
+      }
+  };
+
+  const handleCopyClipboard = async (routine: SavedRoutine) => {
+      try {
+          const json = JSON.stringify(routine, null, 2);
+          await navigator.clipboard.writeText(json);
+          alert("¡Rutina copiada! Puedes pegarla en un email, notas o mensaje.");
+      } catch (err) {
+          alert("No se pudo copiar al portapapeles.");
       }
   };
 
@@ -246,6 +263,13 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
                                         <p className="text-xs text-slate-500">{routine.activities.length} actividades</p>
                                     </div>
                                     <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => handleCopyClipboard(routine)}
+                                            className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                                            title="Copiar texto de respaldo"
+                                        >
+                                            <Copy size={16} />
+                                        </button>
                                         <button 
                                             onClick={() => handleDownloadFile(routine)}
                                             className="p-2 text-green-600 hover:bg-green-50 rounded-lg flex items-center gap-1 text-sm font-medium transition-colors"
