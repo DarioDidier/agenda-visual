@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserMode, Activity, PictogramData, TimePeriod } from '../types';
 import { PictogramCard } from '../components/PictogramCard';
-import { Plus, ChevronLeft, ChevronRight, Grid, List, Copy, Trash2, CalendarDays, AlertTriangle, X, Calendar as CalendarIcon, ArrowLeftCircle, ArrowRightCircle, ChevronDown, Sun, Sunset, Moon, Gift, Lock, Book } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Grid, List, Copy, Trash2, CalendarDays, AlertTriangle, X, Calendar as CalendarIcon, ArrowLeftCircle, ArrowRightCircle, ChevronDown, Sun, Sunset, Moon, Gift, Lock, Book, FileText, Loader2 } from 'lucide-react';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
 import { ActivityEditModal } from '../components/ActivityEditModal';
 import { CopyDayModal } from '../components/CopyDayModal';
@@ -10,6 +10,7 @@ import { CongratulationModal } from '../components/CongratulationModal';
 import { RewardConfigModal } from '../components/RewardConfigModal';
 import { RoutineLibraryModal } from '../components/RoutineLibraryModal';
 import { speakText } from '../services/speechService';
+import { exportScheduleToPDF } from '../services/pdfService';
 
 // Helper for formatting date key (YYYY-MM-DD) in local time
 const getDateKey = (d: Date) => {
@@ -50,6 +51,7 @@ export const ScheduleView: React.FC = () => {
   const [copyingDateKey, setCopyingDateKey] = useState<string | null>(null);
   const [rewardConfig, setRewardConfig] = useState<{dayKey: string, period: TimePeriod} | null>(null);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [generatingPdfFor, setGeneratingPdfFor] = useState<string | null>(null);
 
   // Deletion Confirmation State
   const [confirmAction, setConfirmAction] = useState<{
@@ -198,6 +200,22 @@ export const ScheduleView: React.FC = () => {
   const handleUpdateActivity = (updates: Partial<Activity>) => {
       if (!activityToEdit) return;
       updateActivity(activityToEdit.dayKey, activityToEdit.activity.id, updates);
+  };
+
+  const handleExportPDF = async (dayKey: string, dateObj: Date) => {
+    const activities = schedule[dayKey] || [];
+    if (activities.length === 0) return;
+
+    setGeneratingPdfFor(dayKey);
+    try {
+        const title = `${spanishDays[dateObj.getDay()]} ${dateObj.getDate()} de ${spanishMonths[dateObj.getMonth()]}`;
+        await exportScheduleToPDF(title, activities, pictograms);
+    } catch (e) {
+        console.error(e);
+        alert("Error al generar PDF. Intenta nuevamente.");
+    } finally {
+        setGeneratingPdfFor(null);
+    }
   };
 
   const getPictogram = (id: string) => pictograms.find(p => p.id === id) || pictograms[0];
@@ -455,6 +473,7 @@ export const ScheduleView: React.FC = () => {
             const isToday = dayKey === todayKey;
             const isPast = dayKey < todayKey;
             const dayActivities = schedule[dayKey] || [];
+            const isGeneratingThis = generatingPdfFor === dayKey;
 
             return (
             <div key={dayKey} className={`bg-white rounded-2xl border shadow-sm p-4 flex flex-col group/day relative ${isToday ? 'ring-2 ring-brand-primary ring-offset-2' : ''} ${isPast ? 'bg-slate-50 opacity-80' : ''}`}>
@@ -467,6 +486,14 @@ export const ScheduleView: React.FC = () => {
                     
                     {!isPast && (
                         <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover/day:opacity-100 transition-opacity">
+                        <button
+                            onClick={() => handleExportPDF(dayKey, dateObj)}
+                            disabled={dayActivities.length === 0 || isGeneratingThis}
+                            className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
+                            title="Exportar PDF para imprimir"
+                        >
+                            {isGeneratingThis ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+                        </button>
                         <button
                             onClick={() => setCopyingDateKey(dayKey)}
                             className="p-1.5 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200 transition-colors"
