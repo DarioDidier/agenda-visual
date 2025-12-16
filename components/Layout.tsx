@@ -21,7 +21,28 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [recoveryAnswer, setRecoveryAnswer] = useState('');
   const [recoveryError, setRecoveryError] = useState(false);
 
-  const isActive = (path: string) => location.pathname === path ? 'bg-brand-primary text-white shadow-md' : 'text-slate-500 hover:bg-slate-100';
+  const isHighContrast = settings.highContrast;
+
+  // Dynamic Styles based on High Contrast (Updated to Cyan/Celeste)
+  const mainWrapperClass = isHighContrast 
+    ? 'min-h-screen bg-black text-cyan-300 selection:bg-cyan-700 selection:text-white'
+    : 'min-h-screen bg-slate-50 text-slate-900 selection:bg-brand-primary selection:text-white flex flex-col';
+
+  const headerClass = isHighContrast
+    ? 'bg-black border-b-2 border-cyan-400 sticky top-0 z-40'
+    : 'bg-white border-b sticky top-0 z-40 shadow-sm';
+
+  const navClass = isHighContrast
+    ? 'fixed bottom-0 left-0 right-0 bg-black border-t-2 border-cyan-400 p-2 z-40'
+    : 'fixed bottom-0 left-0 right-0 bg-white border-t p-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]';
+
+  const navItemClass = (path: string) => {
+      const active = location.pathname === path;
+      if (isHighContrast) {
+          return `flex flex-col items-center p-2 rounded-xl border border-transparent transition-all ${active ? 'bg-cyan-400 text-black font-bold' : 'text-cyan-200 hover:border-cyan-400'}`;
+      }
+      return `flex flex-col items-center p-2 rounded-xl transition-all ${active ? 'bg-brand-primary text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`;
+  };
 
   const handleModeSwitchRequest = () => {
     if (mode === UserMode.ADULT) {
@@ -77,23 +98,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const handleForgotPinClick = () => {
       if (!settings.securityAnswer) {
           alert("No has configurado una pregunta de seguridad en los Ajustes. Por defecto el PIN es 1234.");
-          // Optional: Allow emergency reset if strictly needed for demo
-          // updateSettings({ pin: '1234' });
       } else {
           setModalView('RECOVERY');
       }
   };
 
   const handleRecoverySubmit = () => {
-      // Fallback for strict typescript checks, though button click checks above
       if (!settings.securityAnswer) {
           alert("Error: No hay respuesta configurada.");
           return;
       }
 
       if (recoveryAnswer.trim().toLowerCase() === settings.securityAnswer.trim().toLowerCase()) {
-          // Correct answer
-          updateSettings({ pin: '1234' }); // Reset PIN
+          updateSettings({ pin: '1234' }); 
           alert("¡Correcto! Tu PIN ha sido restablecido a: 1234");
           setMode(UserMode.ADULT);
           setShowExitModal(false);
@@ -103,18 +120,18 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className={mainWrapperClass}>
       {/* Top Navigation */}
-      <header className="bg-white border-b sticky top-0 z-40 shadow-sm">
+      <header className={headerClass}>
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center text-white font-bold text-xl transform -rotate-6 shadow-sm">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl transform -rotate-6 shadow-sm ${isHighContrast ? 'bg-cyan-400 text-black' : 'bg-brand-primary text-white'}`}>
                 Ag
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-800 hidden sm:block">
-              Mi Agenda <span className="text-brand-primary">Visual</span>
+            <h1 className={`text-xl font-bold tracking-tight hidden sm:block ${isHighContrast ? 'text-cyan-300' : 'text-slate-800'}`}>
+              Mi Agenda <span className={isHighContrast ? 'text-white' : 'text-brand-primary'}>Visual</span>
             </h1>
-            <h1 className="text-xl font-bold tracking-tight text-slate-800 sm:hidden">
+            <h1 className={`text-xl font-bold tracking-tight sm:hidden ${isHighContrast ? 'text-cyan-300' : 'text-slate-800'}`}>
               Agenda
             </h1>
           </div>
@@ -124,8 +141,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               onClick={handleModeSwitchRequest}
               className={`px-4 py-2 rounded-full font-bold text-sm transition-all flex items-center gap-2 shadow-sm active:scale-95 ${
                 mode === UserMode.CHILD 
-                  ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 ring-2 ring-red-100' 
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  ? (isHighContrast ? 'bg-red-600 text-white border-2 border-white' : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 ring-2 ring-red-100')
+                  : (isHighContrast ? 'bg-cyan-400 text-black hover:bg-cyan-300' : 'bg-indigo-600 text-white hover:bg-indigo-700')
               }`}
             >
               {mode === UserMode.CHILD ? <LogOut size={18}/> : <Baby size={20} />}
@@ -136,26 +153,26 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 pb-24">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 pb-24 flex flex-col">
         {children}
       </main>
 
       {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t p-2 z-40 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+      <nav className={navClass}>
         <div className="max-w-md mx-auto flex justify-around items-center">
             
-            <Link to="/" className={`flex flex-col items-center p-2 rounded-xl transition-all ${isActive('/')}`}>
+            <Link to="/" className={navItemClass('/')}>
                 <Calendar size={24} />
                 <span className="text-xs font-medium mt-1">Agenda</span>
             </Link>
 
-            <Link to="/people" className={`flex flex-col items-center p-2 rounded-xl transition-all ${isActive('/people')}`}>
+            <Link to="/people" className={navItemClass('/people')}>
                 <Users size={24} />
                 <span className="text-xs font-medium mt-1">Personas</span>
             </Link>
 
             {mode === UserMode.ADULT && (
-                <Link to="/settings" className={`flex flex-col items-center p-2 rounded-xl transition-all ${isActive('/settings')}`}>
+                <Link to="/settings" className={navItemClass('/settings')}>
                     <Settings size={24} />
                     <span className="text-xs font-medium mt-1">Ajustes</span>
                 </Link>
@@ -174,7 +191,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                           <Lock size={18} className="text-brand-primary" /> Acceso Adulto
                       </h3>
-                      <div className="w-9" /> {/* Spacer */}
+                      <div className="w-9" />
                   </div>
                   
                   {modalView === 'PIN' ? (
@@ -204,7 +221,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                                     {num}
                                 </button>
                             ))}
-                            <div className="h-14" /> {/* Empty Slot */}
+                            <div className="h-14" />
                             <button
                                 onClick={() => handlePinInput('0')}
                                 className="h-14 w-full rounded-2xl bg-slate-50 text-xl font-bold text-slate-700 hover:bg-slate-100 active:scale-95 transition-all shadow-sm border border-slate-200"
@@ -223,7 +240,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                             <p className="text-red-500 text-sm font-bold animate-pulse">PIN Incorrecto</p>
                         )}
                         
-                        {/* Forgot PIN Link - Always visible now */}
                         <button 
                             onClick={handleForgotPinClick}
                             className="mt-4 text-xs text-brand-primary hover:underline font-medium flex items-center justify-center gap-1 w-full p-2 hover:bg-blue-50 rounded-lg transition-colors"

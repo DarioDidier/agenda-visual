@@ -43,6 +43,9 @@ interface AppContextType {
   importRoutineToLibrary: (routineData: SavedRoutine) => void;
   deleteRoutineFromLibrary: (id: string) => void;
   applyRoutineToDay: (routineId: string, targetDay: string, targetPeriod: TimePeriod) => void;
+  // Backup
+  generateBackupData: () => string;
+  restoreBackupData: (jsonData: string) => boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -318,6 +321,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
   };
 
+  // --- Backup Logic ---
+  const generateBackupData = () => {
+    const backup = {
+      meta: {
+        version: '1.0',
+        date: new Date().toISOString(),
+        appName: 'Mi Agenda Visual'
+      },
+      data: {
+        schedule,
+        rewards,
+        pictograms,
+        peoplePlaces,
+        savedRoutines,
+        settings
+      }
+    };
+    return JSON.stringify(backup, null, 2);
+  };
+
+  const restoreBackupData = (jsonString: string) => {
+    try {
+      const backup = JSON.parse(jsonString);
+      if (!backup.data) throw new Error("Formato inválido");
+      
+      const { data } = backup;
+      
+      // Batch updates
+      if(data.schedule) setSchedule(data.schedule);
+      if(data.rewards) setRewards(data.rewards);
+      if(data.pictograms) setPictograms(data.pictograms);
+      if(data.peoplePlaces) setPeoplePlaces(data.peoplePlaces);
+      if(data.savedRoutines) setSavedRoutines(data.savedRoutines);
+      if(data.settings) setSettings(data.settings);
+      
+      return true;
+    } catch (e) {
+      console.error("Error restoring backup", e);
+      return false;
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       mode, setMode,
@@ -333,7 +378,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       copyRoutine,
       rewards, setReward, redeemReward,
       currentDate, setCurrentDate, goToToday, changeWeek, weekDates,
-      savedRoutines, saveRoutineToLibrary, importRoutineToLibrary, deleteRoutineFromLibrary, applyRoutineToDay
+      savedRoutines, saveRoutineToLibrary, importRoutineToLibrary, deleteRoutineFromLibrary, applyRoutineToDay,
+      generateBackupData, restoreBackupData
     }}>
       {children}
     </AppContext.Provider>

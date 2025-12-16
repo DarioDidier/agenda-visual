@@ -58,8 +58,9 @@ export const PictogramCard: React.FC<Props> = ({
       if (onEdit) onEdit();
   };
 
+  // High Contrast Colors Updated to Cyan/Celeste
   const cardBg = highContrast 
-    ? (activity.isDone ? 'bg-black border-4 border-white' : 'bg-white border-4 border-black') 
+    ? (activity.isDone ? 'bg-black border-4 border-white' : 'bg-white border-4 border-cyan-400') 
     : (activity.isDone ? 'bg-green-100 border-green-300' : pictogram.bgColor);
 
   const textColor = highContrast 
@@ -93,7 +94,7 @@ export const PictogramCard: React.FC<Props> = ({
     >
       {/* Time Label */}
       {activity.time && (
-        <span className={`text-xs font-bold ${highContrast ? 'bg-black text-white px-1' : 'bg-white/50 text-slate-600'} rounded px-2 mb-1`}>
+        <span className={`text-xs font-bold ${highContrast ? 'bg-black text-cyan-300 px-1' : 'bg-white/50 text-slate-600'} rounded px-2 mb-1`}>
           {activity.time}
         </span>
       )}
