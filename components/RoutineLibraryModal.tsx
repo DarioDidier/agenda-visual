@@ -114,48 +114,62 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
 
   // --- Export/Import/Apply Handlers ---
 
-  const handleShare = async (routine: SavedRoutine) => {
-      const json = JSON.stringify(routine);
-      const encoded = btoa(unescape(encodeURIComponent(json))); // Simple Base64 encode for easy copy
-      
-      const shareData = {
-          title: `Rutina: ${routine.name}`,
-          text: encoded,
-      };
+  const getSafeFileName = (name: string) => {
+      return `rutina_${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
+  };
 
-      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+  const handleShare = async (routine: SavedRoutine) => {
+      const json = JSON.stringify(routine, null, 2);
+      const fileName = getSafeFileName(routine.name);
+      const file = new File([json], fileName, { type: "application/json" });
+
+      // Check if Web Share API supports files
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
-              await navigator.share(shareData);
-              return;
+              await navigator.share({
+                  files: [file],
+                  title: `Rutina: ${routine.name}`,
+                  text: 'Te comparto esta rutina para Mi Agenda Visual.',
+              });
           } catch (err) {
-              console.log("Share cancelled");
+              if ((err as any).name !== 'AbortError') {
+                  console.error("Error al compartir:", err);
+                  alert("Hubo un error al intentar compartir.");
+              }
           }
-      }
-      
-      try {
-          await navigator.clipboard.writeText(encoded);
-          alert("Código copiado al portapapeles (versión texto).");
-      } catch (e) {
-          prompt("Copia este código:", encoded);
+      } else {
+          // Fallback if file sharing is not supported (e.g. desktop sometimes)
+          alert("Tu dispositivo no soporta el envío directo de archivos por esta vía. Por favor usa el botón de 'Descargar' y luego envíalo manualmente.");
       }
   };
 
   const handleDownloadFile = (routine: SavedRoutine) => {
-      const json = JSON.stringify(routine, null, 2);
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      // Sanitize filename
-      const safeName = routine.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      link.download = `rutina_${safeName}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      // Show success modal
-      setShowDownloadSuccess(true);
+      try {
+          const json = JSON.stringify(routine, null, 2);
+          const blob = new Blob([json], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = getSafeFileName(routine.name);
+          
+          // Append to body is crucial for Firefox and some mobile browsers
+          document.body.appendChild(link);
+          link.click();
+          
+          // Clean up
+          setTimeout(() => {
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+          }, 100);
+          
+          // Show success modal
+          setShowDownloadSuccess(true);
+      } catch (e) {
+          console.error("Download failed", e);
+          // Fallback message for Android webviews that strictly block blob downloads
+          alert("No se pudo iniciar la descarga. Intenta usar el botón de 'Compartir' para guardar el archivo en tu dispositivo o enviarlo.");
+      }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -265,7 +279,7 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
                                         <button 
                                             onClick={() => handleShare(routine)}
                                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-1 text-sm font-medium transition-colors"
-                                            title="Compartir código"
+                                            title="Enviar por WhatsApp/Bluetooth"
                                         >
                                             <Share2 size={16} />
                                         </button>
