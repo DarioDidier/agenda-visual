@@ -4,22 +4,28 @@ import { speakText } from '../services/speechService';
 
 interface Props {
   onClose: () => void;
+  title?: string;
+  message?: string;
 }
 
-export const CongratulationModal: React.FC<Props> = ({ onClose }) => {
+export const CongratulationModal: React.FC<Props> = ({ 
+  onClose, 
+  title = "¡Excelente Trabajo!", 
+  message = "Has terminado todo por hoy." 
+}) => {
   useEffect(() => {
     // Play sound and speak immediately on mount
     const audio = new Audio('https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg'); // Simple sound or fallback
     audio.play().catch(() => {}); // Catch error if interaction needed first
     
     setTimeout(() => {
-        speakText("¡Felicidades! Has completado todas tus tareas. ¡Eres genial!");
+        speakText(message);
     }, 500);
 
-    // Auto close after 5 seconds
+    // Auto close after 6 seconds
     const timer = setTimeout(onClose, 6000);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, [onClose, message]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
@@ -52,11 +58,11 @@ export const CongratulationModal: React.FC<Props> = ({ onClose }) => {
             </div>
 
             <div className="space-y-2">
-                <h2 className="text-4xl font-extrabold text-brand-primary tracking-tight">
-                    ¡Excelente Trabajo!
+                <h2 className="text-3xl font-extrabold text-brand-primary tracking-tight">
+                    {title}
                 </h2>
-                <p className="text-xl text-slate-600 font-medium">
-                    Has terminado todo por hoy.
+                <p className="text-xl text-slate-600 font-medium leading-relaxed">
+                    {message}
                 </p>
             </div>
 

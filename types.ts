@@ -49,6 +49,15 @@ export interface Activity {
   notes?: string;
 }
 
+export interface SavedRoutine {
+  id: string;
+  name: string;
+  description?: string;
+  activities: Activity[];
+  // We include the pictogram data so the receiving device can display them even if they don't have them yet.
+  requiredPictograms: PictogramData[]; 
+}
+
 export interface Reward {
   id: string;
   dayKey: string;

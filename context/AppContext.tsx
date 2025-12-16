@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppSettings, UserMode, WeekSchedule, PictogramData, PersonOrPlace, Activity, Reward, RewardSchedule, TimePeriod } from '../types';
+import { AppSettings, UserMode, WeekSchedule, PictogramData, PersonOrPlace, Activity, Reward, RewardSchedule, TimePeriod, SavedRoutine } from '../types';
 import { INITIAL_PICTOGRAMS, EMPTY_SCHEDULE } from '../constants';
 
 // Date Utility Helpers
@@ -37,6 +37,12 @@ interface AppContextType {
   goToToday: () => void;
   changeWeek: (weeks: number) => void;
   weekDates: Date[]; // The 7 dates of the current week
+  // Saved Routines (Library)
+  savedRoutines: SavedRoutine[];
+  saveRoutineToLibrary: (name: string, description: string, activities: Activity[]) => void;
+  importRoutineToLibrary: (routineData: SavedRoutine) => void;
+  deleteRoutineFromLibrary: (id: string) => void;
+  applyRoutineToDay: (routineId: string, targetDay: string, targetPeriod: TimePeriod) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -69,6 +75,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           {id: 'pp1', name: 'Mamá', type: 'PERSON', imageUrl: 'https://picsum.photos/200/200'},
           {id: 'pp2', name: 'Escuela', type: 'PLACE', imageUrl: 'https://picsum.photos/201/201'}
       ];
+  });
+
+  const [savedRoutines, setSavedRoutines] = useState<SavedRoutine[]>(() => {
+      const saved = localStorage.getItem('mav_saved_routines');
+      return saved ? JSON.parse(saved) : [];
   });
 
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -118,6 +129,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('mav_settings', JSON.stringify(settings));
   }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem('mav_saved_routines', JSON.stringify(savedRoutines));
+  }, [savedRoutines]);
 
   // --- Date Logic ---
   const goToToday = () => setCurrentDate(new Date());
@@ -213,6 +228,71 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
   };
 
+  // --- Saved Routines Logic ---
+
+  const saveRoutineToLibrary = (name: string, description: string, activities: Activity[]) => {
+      // 1. Identify unique pictograms used in these activities
+      const usedPicIds = new Set(activities.map(a => a.pictogramId));
+      const requiredPictograms = pictograms.filter(p => usedPicIds.has(p.id));
+
+      const newRoutine: SavedRoutine = {
+          id: crypto.randomUUID(),
+          name,
+          description,
+          activities: activities.map(a => ({ ...a, id: crypto.randomUUID(), isDone: false })), // Clean IDs/State
+          requiredPictograms
+      };
+
+      setSavedRoutines(prev => [...prev, newRoutine]);
+  };
+
+  const importRoutineToLibrary = (routineData: SavedRoutine) => {
+      // 1. Merge missing pictograms into library
+      setPictograms(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newPics = routineData.requiredPictograms.filter(p => !existingIds.has(p.id));
+          return [...prev, ...newPics];
+      });
+
+      // 2. Add routine to library (ensure new ID to avoid conflict)
+      const importedRoutine = { ...routineData, id: crypto.randomUUID(), name: `${routineData.name} (Importada)` };
+      setSavedRoutines(prev => [...prev, importedRoutine]);
+  };
+
+  const deleteRoutineFromLibrary = (id: string) => {
+      setSavedRoutines(prev => prev.filter(r => r.id !== id));
+  };
+
+  const applyRoutineToDay = (routineId: string, targetDay: string, targetPeriod: TimePeriod) => {
+      const routine = savedRoutines.find(r => r.id === routineId);
+      if (!routine) return;
+
+      const newActivities: Activity[] = routine.activities.map(a => ({
+          ...a,
+          id: crypto.randomUUID(),
+          period: targetPeriod, // Apply the selected period from the modal (or keep original if logic demands)
+          isDone: false,
+          time: a.time || '' // Preserve the time from the routine
+      }));
+
+      setSchedule(prev => {
+          const existingActivities = prev[targetDay] || [];
+          const combinedActivities = [...existingActivities, ...newActivities];
+          
+          // Sort by time ascending
+          combinedActivities.sort((a, b) => {
+              const timeA = a.time || '00:00';
+              const timeB = b.time || '00:00';
+              return timeA.localeCompare(timeB);
+          });
+
+          return {
+              ...prev,
+              [targetDay]: combinedActivities
+          };
+      });
+  };
+
   // --- Rewards Logic ---
   const setReward = (dayKey: string, period: TimePeriod, label: string, emoji: string, imageUrl?: string) => {
     const key = `${dayKey}-${period}`;
@@ -252,7 +332,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       deleteActivity,
       copyRoutine,
       rewards, setReward, redeemReward,
-      currentDate, setCurrentDate, goToToday, changeWeek, weekDates
+      currentDate, setCurrentDate, goToToday, changeWeek, weekDates,
+      savedRoutines, saveRoutineToLibrary, importRoutineToLibrary, deleteRoutineFromLibrary, applyRoutineToDay
     }}>
       {children}
     </AppContext.Provider>

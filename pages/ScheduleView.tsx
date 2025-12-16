@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserMode, Activity, PictogramData, TimePeriod } from '../types';
 import { PictogramCard } from '../components/PictogramCard';
-import { Plus, ChevronLeft, ChevronRight, Grid, List, Copy, Trash2, CalendarDays, AlertTriangle, X, Calendar as CalendarIcon, ArrowLeftCircle, ArrowRightCircle, ChevronDown, Sun, Sunset, Moon, Gift, Lock } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Grid, List, Copy, Trash2, CalendarDays, AlertTriangle, X, Calendar as CalendarIcon, ArrowLeftCircle, ArrowRightCircle, ChevronDown, Sun, Sunset, Moon, Gift, Lock, Book } from 'lucide-react';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
 import { ActivityEditModal } from '../components/ActivityEditModal';
 import { CopyDayModal } from '../components/CopyDayModal';
 import { CongratulationModal } from '../components/CongratulationModal';
 import { RewardConfigModal } from '../components/RewardConfigModal';
+import { RoutineLibraryModal } from '../components/RoutineLibraryModal';
 import { speakText } from '../services/speechService';
 
 // Helper for formatting date key (YYYY-MM-DD) in local time
@@ -35,7 +36,11 @@ export const ScheduleView: React.FC = () => {
   });
 
   const [viewFormat, setViewFormat] = useState<'linear' | 'grid'>('grid');
-  const [showCongratulation, setShowCongratulation] = useState(false);
+  
+  // Logic for congratulations
+  const [congratsConfig, setCongratsConfig] = useState<{show: boolean, title: string, message: string} | null>(null);
+  const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
+
   const [childActivePeriod, setChildActivePeriod] = useState<TimePeriod>('morning');
   
   // Modals state
@@ -44,6 +49,7 @@ export const ScheduleView: React.FC = () => {
   const [activityToEdit, setActivityToEdit] = useState<{dayKey: string, activity: Activity} | null>(null);
   const [copyingDateKey, setCopyingDateKey] = useState<string | null>(null);
   const [rewardConfig, setRewardConfig] = useState<{dayKey: string, period: TimePeriod} | null>(null);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
   // Deletion Confirmation State
   const [confirmAction, setConfirmAction] = useState<{
@@ -67,29 +73,54 @@ export const ScheduleView: React.FC = () => {
       }
   }, [mode]);
 
-  // Logic to trigger congratulations in Child Mode (Global or Period based)
+  // Reset completed sections when day changes
+  useEffect(() => {
+    setCompletedSections(new Set());
+  }, [currentChildDayKey]);
+
+  // Logic to trigger congratulations in Child Mode (Specific Periods & Full Day)
   useEffect(() => {
     if (mode === UserMode.CHILD && currentChildDayKey) {
-      const activities = schedule[currentChildDayKey] || [];
-      const periodActivities = activities.filter(a => (a.period || 'morning') === childActivePeriod);
+      const allActivities = schedule[currentChildDayKey] || [];
+      if (allActivities.length === 0) return;
+
+      const periods: TimePeriod[] = ['morning', 'afternoon', 'evening'];
       
-      // If we have activities in this period AND all are done AND no unredeemed reward pending
-      if (periodActivities.length > 0 && periodActivities.every(a => a.isDone)) {
-        // Only show general congratulation if there is NO reward configured (reward takes precedence)
-        const rewardKey = `${currentChildDayKey}-${childActivePeriod}`;
-        if (!rewards[rewardKey]) {
-             // Basic confetti if just finished tasks with no specific reward
-             // Debounce slightly
-             const timer = setTimeout(() => {
-                 // Check if we haven't already shown it recently or something? 
-                 // For now simple logic: if all done, show.
-                 // Ideally we track "shown" state.
-             }, 500);
-             return () => clearTimeout(timer);
-        }
+      // 1. Check Full Day Completion
+      const isDayDone = allActivities.every(a => a.isDone);
+      if (isDayDone && !completedSections.has('DAY_COMPLETE')) {
+          setCongratsConfig({
+              show: true,
+              title: "¡Día Completado!",
+              message: "¡Felicidades! Has terminado todas las rutinas del día. Eres increíble."
+          });
+          setCompletedSections(prev => new Set(prev).add('DAY_COMPLETE').add('morning').add('afternoon').add('evening'));
+          return; // Stop checking periods if day is done to avoid double popup
+      }
+
+      // 2. Check Individual Periods (Only if day not just marked complete)
+      if (!isDayDone) {
+          periods.forEach(p => {
+              const pActs = allActivities.filter(a => a.period === p);
+              if (pActs.length > 0) {
+                  const isPeriodDone = pActs.every(a => a.isDone);
+                  if (isPeriodDone && !completedSections.has(p)) {
+                      let periodName = "mañana";
+                      if (p === 'afternoon') periodName = "tarde";
+                      if (p === 'evening') periodName = "noche";
+
+                      setCongratsConfig({
+                          show: true,
+                          title: "¡Muy bien!",
+                          message: `¡Felicidades! Terminaste las rutinas de la ${periodName}.`
+                      });
+                      setCompletedSections(prev => new Set(prev).add(p));
+                  }
+              }
+          });
       }
     }
-  }, [schedule, currentChildDayKey, mode, childActivePeriod, rewards]);
+  }, [schedule, currentChildDayKey, mode, completedSections]);
 
   // Ensure Child Mode defaults to "Today" on mount/mode switch
   useEffect(() => {
@@ -194,7 +225,8 @@ export const ScheduleView: React.FC = () => {
   const handleRewardRedeem = (dayKey: string, period: TimePeriod) => {
       redeemReward(dayKey, period);
       speakText("¡Premio canjeado! ¡Disfrútalo!");
-      setShowCongratulation(true); // Re-use this for confetti
+      // We don't necessarily show the generic congrats modal here as the card itself updates, 
+      // but we could if we wanted. For now, the visual feedback on the card is strong.
   };
 
   // --- CHILD MODE RENDER ---
@@ -335,8 +367,12 @@ export const ScheduleView: React.FC = () => {
              )}
         </div>
 
-        {showCongratulation && (
-            <CongratulationModal onClose={() => setShowCongratulation(false)} />
+        {congratsConfig && congratsConfig.show && (
+            <CongratulationModal 
+                title={congratsConfig.title}
+                message={congratsConfig.message}
+                onClose={() => setCongratsConfig(null)} 
+            />
         )}
       </div>
     );
@@ -371,6 +407,16 @@ export const ScheduleView: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+               
+               <button 
+                  onClick={() => setIsLibraryOpen(true)}
+                  className="bg-brand-secondary text-white px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-600 transition-colors shadow-sm"
+                  title="Biblioteca de Rutinas"
+               >
+                   <Book size={18} />
+                   <span className="hidden sm:inline">Biblioteca</span>
+               </button>
+
                <div className="relative group">
                    <input 
                       type="date"
@@ -511,6 +557,13 @@ export const ScheduleView: React.FC = () => {
             </div>
         )})}
       </div>
+
+      {isLibraryOpen && (
+          <RoutineLibraryModal 
+             onClose={() => setIsLibraryOpen(false)}
+             currentDayKey={getDateKey(currentDate)} // Pass the currently selected single date in the header
+          />
+      )}
 
       {isSelectorOpen && (
           <PictogramSelectorModal 
