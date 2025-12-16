@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Activity, SavedRoutine, TimePeriod, PictogramData } from '../types';
-import { X, Book, Download, Upload, Trash2, PlusCircle, Check, Share2, Sun, Sunset, Moon, Plus, ArrowUp, ArrowDown, Clock, ChevronDown, FileJson, FileUp } from 'lucide-react';
+import { X, Book, Download, Upload, Trash2, PlusCircle, Check, Sun, Sunset, Moon, Plus, ArrowUp, ArrowDown, Clock, ChevronDown, FileJson, FileUp } from 'lucide-react';
 import { PictogramIcon } from './PictogramIcon';
 import { PictogramSelectorModal } from './PictogramSelectorModal';
 import { getArasaacImageUrl } from '../services/arasaacService';
@@ -118,57 +118,34 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
       return `rutina_${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
   };
 
-  const handleShare = async (routine: SavedRoutine) => {
-      const json = JSON.stringify(routine, null, 2);
-      const fileName = getSafeFileName(routine.name);
-      const file = new File([json], fileName, { type: "application/json" });
-
-      // Check if Web Share API supports files
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-              await navigator.share({
-                  files: [file],
-                  title: `Rutina: ${routine.name}`,
-                  text: 'Te comparto esta rutina para Mi Agenda Visual.',
-              });
-          } catch (err) {
-              if ((err as any).name !== 'AbortError') {
-                  console.error("Error al compartir:", err);
-                  alert("Hubo un error al intentar compartir.");
-              }
-          }
-      } else {
-          // Fallback if file sharing is not supported (e.g. desktop sometimes)
-          alert("Tu dispositivo no soporta el envío directo de archivos por esta vía. Por favor usa el botón de 'Descargar' y luego envíalo manualmente.");
-      }
-  };
-
   const handleDownloadFile = (routine: SavedRoutine) => {
       try {
           const json = JSON.stringify(routine, null, 2);
-          const blob = new Blob([json], { type: "application/json" });
-          const url = URL.createObjectURL(blob);
+          const fileName = getSafeFileName(routine.name);
+          
+          // FIX ANDROID: Usar Data URI en lugar de Blob.
+          // Los Blobs a veces fallan en WebViews de Android al intentar abrir la URL interna.
+          // encodeURIComponent asegura que los caracteres especiales (tildes, ñ) se guarden bien.
+          const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
           
           const link = document.createElement('a');
-          link.href = url;
-          link.download = getSafeFileName(routine.name);
+          link.href = dataUri;
+          link.download = fileName;
+          link.style.display = 'none';
           
-          // Append to body is crucial for Firefox and some mobile browsers
           document.body.appendChild(link);
           link.click();
           
-          // Clean up
+          // Cleanup
           setTimeout(() => {
               document.body.removeChild(link);
-              URL.revokeObjectURL(url);
           }, 100);
           
           // Show success modal
           setShowDownloadSuccess(true);
       } catch (e) {
           console.error("Download failed", e);
-          // Fallback message for Android webviews that strictly block blob downloads
-          alert("No se pudo iniciar la descarga. Intenta usar el botón de 'Compartir' para guardar el archivo en tu dispositivo o enviarlo.");
+          alert("No se pudo generar el archivo de descarga.");
       }
   };
 
@@ -274,14 +251,7 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
                                             className="p-2 text-green-600 hover:bg-green-50 rounded-lg flex items-center gap-1 text-sm font-medium transition-colors"
                                             title="Descargar archivo"
                                         >
-                                            <FileJson size={16} />
-                                        </button>
-                                        <button 
-                                            onClick={() => handleShare(routine)}
-                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-1 text-sm font-medium transition-colors"
-                                            title="Enviar por WhatsApp/Bluetooth"
-                                        >
-                                            <Share2 size={16} />
+                                            <FileJson size={16} /> Descargar
                                         </button>
                                         <button 
                                             onClick={() => deleteRoutineFromLibrary(routine.id)}
