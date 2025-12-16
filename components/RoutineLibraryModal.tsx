@@ -46,9 +46,6 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
   const [targetPeriod, setTargetPeriod] = useState<TimePeriod>('morning');
   const [expandedRoutineId, setExpandedRoutineId] = useState<string | null>(null);
 
-  // Download Success State
-  const [showDownloadSuccess, setShowDownloadSuccess] = useState(false);
-
   // Helper to get pictogram info for preview
   const getPic = (id: string, localRequired?: any[]) => {
       // Look in main library first, then in the required array (for display during import preview potentially)
@@ -123,32 +120,20 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
           const json = JSON.stringify(routine, null, 2);
           const fileName = getSafeFileName(routine.name);
 
-          // ANDROID FIX:
-          // 1. Usamos Blob estándar con application/json.
-          const blob = new Blob([json], { type: "application/json" });
-          const url = window.URL.createObjectURL(blob);
+          // FIX ANDROID CRASH:
+          // Usar Data URI con codificación explícita evita la creación de Blobs en memoria,
+          // lo cual es la causa principal de cierres inesperados en WebViews de Android.
+          // El navegador maneja esto como una navegación simple a un recurso de texto.
+          const dataStr = "data:application/json;charset=utf-8," + encodeURIComponent(json);
           
           const link = document.createElement('a');
-          link.href = url;
-          link.download = fileName;
-          link.style.display = 'none';
-          
-          // 2. IMPORTANTE: NO usar target="_blank" en móviles para descargas de Blob.
-          // Esto suele causar el cierre inesperado de WebViews.
-          // El atributo 'download' ya indica al navegador que no debe navegar, sino guardar.
-          
+          link.setAttribute("href", dataStr);
+          link.setAttribute("download", fileName);
           document.body.appendChild(link);
           link.click();
+          link.remove();
           
-          // 3. Timeout extendido para asegurar que el Download Manager de Android capture el stream.
-          setTimeout(() => {
-              if (document.body.contains(link)) {
-                document.body.removeChild(link);
-              }
-              window.URL.revokeObjectURL(url);
-          }, 3000);
-          
-          setShowDownloadSuccess(true);
+          // No mostramos popup de éxito, la descarga es nativa.
       } catch (e) {
           console.error("Download failed", e);
           alert("No se pudo iniciar la descarga.");
@@ -490,28 +475,6 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
             onClose={() => setIsSelectorOpen(false)} 
           />
       )}
-
-      {/* Download Success Popup */}
-      {showDownloadSuccess && (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-                <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center border-4 border-green-50 transform scale-100 animate-in zoom-in-95">
-                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                        <Check size={32} strokeWidth={4} />
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-800 mb-2">¡Descarga Exitosa!</h3>
-                    <p className="text-slate-500 text-sm mb-6 leading-relaxed">
-                        El archivo de la rutina se ha guardado en tu dispositivo. <br/>
-                        <span className="font-bold text-slate-700">Puedes compartir este archivo</span> por WhatsApp, Email o Drive para importarlo en otro dispositivo.
-                    </p>
-                    <button 
-                        onClick={() => setShowDownloadSuccess(false)}
-                        className="w-full py-3 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition-colors shadow-lg shadow-green-500/20"
-                    >
-                        Entendido
-                    </button>
-                </div>
-            </div>
-       )}
     </div>
   );
 };
