@@ -17,6 +17,16 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
   const { savedRoutines, saveRoutineToLibrary, importRoutineToLibrary, deleteRoutineFromLibrary, applyRoutineToDay, pictograms } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>('LIBRARY');
   
+  // Helper for Today's date (Local time) to set constraints
+  const getTodayKey = () => {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+  };
+  const minDateKey = getTodayKey();
+
   // Create State
   const [createName, setCreateName] = useState('');
   const [draftActivities, setDraftActivities] = useState<Activity[]>([]);
@@ -27,7 +37,12 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Apply State
-  const [targetDay, setTargetDay] = useState(currentDayKey || new Date().toISOString().split('T')[0]);
+  // If currentDayKey is passed but is in the past, default to today. Otherwise use passed key or today.
+  const [targetDay, setTargetDay] = useState(() => {
+      if (currentDayKey && currentDayKey >= minDateKey) return currentDayKey;
+      return minDateKey;
+  });
+  
   const [targetPeriod, setTargetPeriod] = useState<TimePeriod>('morning');
   const [expandedRoutineId, setExpandedRoutineId] = useState<string | null>(null);
 
@@ -175,6 +190,11 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
   };
 
   const handleApply = (routineId: string) => {
+      if (targetDay < minDateKey) {
+          alert("Solo puedes aplicar rutinas desde el día de hoy en adelante.");
+          return;
+      }
+
       applyRoutineToDay(routineId, targetDay, targetPeriod);
       alert("Rutina aplicada y ordenada cronológicamente.");
       onClose();
@@ -294,9 +314,10 @@ export const RoutineLibraryModal: React.FC<Props> = ({ onClose, currentDayKey })
                                                 <div className="relative group mt-1">
                                                     <input 
                                                         type="date" 
+                                                        min={minDateKey}
                                                         value={targetDay}
                                                         onChange={(e) => setTargetDay(e.target.value)}
-                                                        className="w-full p-2 pr-8 border rounded-lg text-sm bg-white text-slate-900 outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer"
+                                                        className="w-full p-2 pr-8 border rounded-lg text-sm bg-white text-slate-900 outline-none focus:ring-2 focus:ring-brand-primary cursor-pointer appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                                                     />
                                                     <ChevronDown size={18} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                                                 </div>
