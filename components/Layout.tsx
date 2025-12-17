@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { UserMode } from '../types';
 import { Settings, Users, Calendar, LogOut, Baby, Lock, X, Delete, ShieldCheck, HelpCircle } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Logo } from './Logo';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { mode, setMode, settings, updateSettings } = useApp();
@@ -124,16 +125,18 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       {/* Top Navigation */}
       <header className={headerClass}>
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xl transform -rotate-6 shadow-sm ${isHighContrast ? 'bg-cyan-400 text-black' : 'bg-brand-primary text-white'}`}>
-                Ag
-            </div>
-            <h1 className={`text-xl font-bold tracking-tight hidden sm:block ${isHighContrast ? 'text-cyan-300' : 'text-slate-800'}`}>
-              Mi Agenda <span className={isHighContrast ? 'text-white' : 'text-brand-primary'}>Visual</span>
-            </h1>
-            <h1 className={`text-xl font-bold tracking-tight sm:hidden ${isHighContrast ? 'text-cyan-300' : 'text-slate-800'}`}>
-              Agenda
-            </h1>
+          <div className="flex items-center">
+             {/* Logo Section */}
+             {isHighContrast ? (
+                 <div className="flex items-center gap-2">
+                    <div className="w-10 h-10 bg-cyan-400 text-black flex items-center justify-center font-bold rounded-lg text-xl">NV</div>
+                    <span className="font-bold text-xl text-cyan-300">NeuroVisual</span>
+                 </div>
+             ) : (
+                 <div className="flex items-center -ml-2">
+                    <Logo className="w-48 h-16" showText={true} />
+                 </div>
+             )}
           </div>
 
           <div className="flex items-center gap-4">
