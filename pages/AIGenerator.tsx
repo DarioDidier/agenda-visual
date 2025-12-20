@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Loader2, ArrowRight, Edit2, Calendar as CalendarIcon, AlertCircle, ChevronDown, Sun, Sunset, Moon, Wand2 } from 'lucide-react';
+import { Sparkles, Loader2, ArrowRight, Edit2, Calendar as CalendarIcon, AlertCircle, ChevronDown, Sun, Sunset, Moon, Wand2, Key } from 'lucide-react';
 import { generateRoutine } from '../services/geminiService';
 import { searchArasaac, getArasaacImageUrl } from '../services/arasaacService';
 import { Activity, PictogramData, Category, TimePeriod } from '../types';
 import { PictogramIcon } from '../components/PictogramIcon';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
+
+// Se elimina el bloque declare global que causaba conflicto con la definición existente de AIStudio en el entorno.
+// En su lugar, se accede a window.aistudio mediante aserción de tipo 'any' dentro del componente.
 
 const getLocalDateKey = (d: Date = new Date()) => {
     const year = d.getFullYear();
@@ -22,13 +26,41 @@ export const AIGenerator: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [generatedItems, setGeneratedItems] = useState<any[]>([]);
+  const [apiKeySelected, setApiKeySelected] = useState(true);
   
   const todayKey = getLocalDateKey();
   const [selectedDayKey, setSelectedDayKey] = useState<string>(todayKey);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
 
+  // Acceso seguro a la API de selección de llaves usando casting a any para evitar conflictos de tipos globales
+  const aistudio = (window as any).aistudio;
+
+  useEffect(() => {
+    const checkApiKey = async () => {
+      if (aistudio) {
+        const hasKey = await aistudio.hasSelectedApiKey();
+        setApiKeySelected(hasKey);
+      }
+    };
+    checkApiKey();
+  }, [aistudio]);
+
+  const handleOpenKeySelector = async () => {
+    if (aistudio) {
+      await aistudio.openSelectKey();
+      // Se asume éxito tras abrir el selector según las directrices para mitigar condiciones de carrera
+      setApiKeySelected(true);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+
+    // Verificar si se requiere selección de API Key
+    if (aistudio && !(await aistudio.hasSelectedApiKey())) {
+        await handleOpenKeySelector();
+    }
+
     setLoading(true);
     setGeneratedItems([]);
     
@@ -52,7 +84,13 @@ export const AIGenerator: React.FC = () => {
       setGeneratedItems(enhancedItems);
     } catch (e: any) {
       console.error(e);
-      alert(`Lo sentimos, hubo un problema al generar la rutina: ${e.message || 'Error de conexión'}`);
+      // Resetear estado si la entidad no se encuentra (posible llave inválida o expirada)
+      if (e.message?.includes('API key is missing') || e.message?.includes('not found')) {
+        setApiKeySelected(false);
+        alert('Es necesario seleccionar una API Key válida para usar la IA. Por favor, utiliza el botón "Configurar API Key".');
+      } else {
+        alert(`Lo sentimos, hubo un problema al generar la rutina: ${e.message || 'Error de conexión'}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -141,6 +179,23 @@ export const AIGenerator: React.FC = () => {
             Dile a la IA qué rutina necesitas crear (ej: "Rutina de mañana para ir al cole", "Pasos para lavarse las manos"). Ella buscará los pictogramas y organizará los tiempos por ti.
         </p>
       </div>
+
+      {!apiKeySelected && (
+        <div className="bg-red-50 border-2 border-red-200 p-6 rounded-3xl flex flex-col items-center gap-4 animate-in zoom-in-95">
+          <Key className="text-red-500" size={40} />
+          <div className="text-center">
+            <h3 className="font-bold text-red-800">Se requiere una API Key</h3>
+            <p className="text-red-600 text-sm">Para usar las funciones de IA, debes seleccionar una clave de API de un proyecto con facturación habilitada.</p>
+            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-xs underline text-red-500 block mt-1">Ver documentación de facturación</a>
+          </div>
+          <button 
+            onClick={handleOpenKeySelector}
+            className="bg-red-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-red-700 transition-colors shadow-lg"
+          >
+            Configurar API Key
+          </button>
+        </div>
+      )}
 
       <div className="bg-white p-6 rounded-3xl shadow-xl border-2 border-slate-100 space-y-5">
         <div className="space-y-2">
