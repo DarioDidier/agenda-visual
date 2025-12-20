@@ -65,6 +65,11 @@ export const ScheduleView: React.FC = () => {
   }, [mode]);
 
   const handleAddActivity = (dateKey: string) => {
+    // No permitir agregar en días pasados
+    if (dateKey < todayKey) {
+        announce("No se pueden agregar actividades a días que ya han pasado.");
+        return;
+    }
     setEditingDateKey(dateKey);
     setIsSelectorOpen(true);
   };
@@ -213,30 +218,35 @@ export const ScheduleView: React.FC = () => {
         {weekDates.map((dateObj) => {
             const dayKey = getDateKey(dateObj);
             const isToday = dayKey === todayKey;
+            const isPast = dayKey < todayKey;
             const dayActivities = schedule[dayKey] || [];
             return (
-            <section key={dayKey} className={`bg-white rounded-2xl border shadow-sm p-4 flex flex-col relative ${isToday ? 'ring-2 ring-brand-primary' : ''}`} aria-labelledby={`heading-${dayKey}`}>
+            <section key={dayKey} className={`bg-white rounded-2xl border shadow-sm p-4 flex flex-col relative ${isToday ? 'ring-2 ring-brand-primary' : ''} ${isPast ? 'opacity-90 bg-slate-50/50' : ''}`} aria-labelledby={`heading-${dayKey}`}>
                 <div className="flex justify-between items-center mb-4 pb-2 border-b">
-                    <h3 id={`heading-${dayKey}`} className="font-bold text-lg text-slate-700 capitalize">
+                    <h3 id={`heading-${dayKey}`} className="font-bold text-lg text-slate-700 capitalize flex items-center gap-2">
                         {spanishDays[dateObj.getDay()]} <span className="text-brand-primary">{dateObj.getDate()}</span>
+                        {isPast && <span className="text-[10px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded uppercase tracking-wider">Historial</span>}
                     </h3>
                     <div className="flex gap-1">
-                        <button onClick={() => handleExportPDF(dayKey, dateObj)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg" aria-label={`Exportar agenda del ${spanishDays[dateObj.getDay()]} a PDF`}>
+                        <button onClick={() => handleExportPDF(dayKey, dateObj)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors" aria-label={`Exportar agenda del ${spanishDays[dateObj.getDay()]} a PDF`}>
                             {generatingPdfFor === dayKey ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
                         </button>
-                        <button onClick={() => handleAddActivity(dayKey)} className="p-1.5 bg-brand-primary text-white rounded-lg" aria-label={`Agregar actividad al ${spanishDays[dateObj.getDay()]}`}>
-                            <Plus size={18} />
-                        </button>
+                        {!isPast && (
+                            <button onClick={() => handleAddActivity(dayKey)} className="p-1.5 bg-brand-primary text-white rounded-lg hover:bg-brand-secondary transition-colors" aria-label={`Agregar actividad al ${spanishDays[dateObj.getDay()]}`}>
+                                <Plus size={18} />
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className="space-y-3" role="list">
                     {dayActivities.length === 0 && <p className="text-slate-300 text-xs italic text-center py-4">Sin actividades</p>}
-                    {dayActivities.map((activity, idx) => (
+                    {dayActivities.map((activity) => (
                         <div key={activity.id} role="listitem">
                             <PictogramCard 
                                 activity={activity} 
                                 pictogram={getPictogram(activity.pictogramId)}
-                                onDelete={() => { deleteActivity(dayKey, activity.id); announce("Actividad eliminada"); }}
+                                // Solo pasar la función de borrar si el día NO es pasado
+                                onDelete={!isPast ? () => { deleteActivity(dayKey, activity.id); announce("Actividad eliminada"); } : undefined}
                             />
                         </div>
                     ))}
