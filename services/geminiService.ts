@@ -1,18 +1,13 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { Category } from "../types";
 
 export const generateRoutine = async (query: string): Promise<any[]> => {
   try {
-    // Inicialización directa usando la variable de entorno inyectada justo antes de la llamada.
-    // Esto asegura que siempre se use la clave más reciente si el usuario la cambia en el diálogo.
+    // La instancia se crea aquí para usar la clave inyectada más reciente
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    // Lista de categorías disponibles para el contexto de la IA
     const categoriesStr = Object.values(Category).join(', ');
-
-    // Usamos gemini-3-pro-preview para tareas complejas de razonamiento y generación de rutinas personalizadas.
-    const model = 'gemini-3-pro-preview';
+    const model = 'gemini-3-flash-preview';
 
     const response = await ai.models.generateContent({
       model,
@@ -21,12 +16,12 @@ export const generateRoutine = async (query: string): Promise<any[]> => {
       Reglas estrictas:
       1. Devuelve SOLAMENTE un Array JSON válido.
       2. Usa exactamente estas claves para cada objeto: 
-         - "label": Nombre de la actividad en español (ej: "Lavarse los dientes").
-         - "arasaacKeyword": Una única palabra clave en español para buscar el pictograma (ej: "dientes").
-         - "iconName": Nombre de un icono de Lucide en inglés que represente la acción (ej: "Sparkles").
+         - "label": Nombre de la actividad en español.
+         - "arasaacKeyword": Una única palabra clave en español para buscar el pictograma.
+         - "iconName": Nombre de un icono de Lucide en inglés.
          - "category": Una de estas opciones: ${categoriesStr}.
          - "period": "morning", "afternoon" o "evening".
-         - "time": Formato HH:MM (ej: "08:30").
+         - "time": Formato HH:MM.
       3. Asegúrate de que el orden sea cronológico.`,
       config: {
         responseMimeType: "application/json",
@@ -48,15 +43,12 @@ export const generateRoutine = async (query: string): Promise<any[]> => {
       }
     });
 
-    // Acceso directo a .text según las directrices del SDK.
     const text = response.text;
-    if (!text) throw new Error("La IA no devolvió contenido.");
+    if (!text) throw new Error("No se recibió respuesta de la IA.");
 
-    // Parsear el JSON retornado
     return JSON.parse(text);
-
-  } catch (error) {
-    console.error("Error en el Asistente Mágico:", error);
+  } catch (error: any) {
+    console.error("Error en geminiService:", error);
     throw error;
   }
 };
