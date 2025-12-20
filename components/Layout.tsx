@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserMode } from '../types';
-import { Settings, Users, Calendar, LogOut, Baby, Lock, X, Delete, ShieldCheck, HelpCircle } from 'lucide-react';
+import { Settings, Users, Calendar, LogOut, Baby, Lock, X, Delete, ShieldCheck, HelpCircle, Sparkles } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
 
@@ -100,6 +100,14 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     <span className="text-xs font-bold mt-1">Agenda</span>
                 </Link>
             </li>
+            {mode === UserMode.ADULT && (
+                <li>
+                    <Link to="/ai" className={navItemClass('/ai')} aria-current={location.pathname === '/ai' ? 'page' : undefined}>
+                        <Sparkles size={24} aria-hidden="true" />
+                        <span className="text-xs font-bold mt-1">Asistente AI</span>
+                    </Link>
+                </li>
+            )}
             <li>
                 <Link to="/people" className={navItemClass('/people')} aria-current={location.pathname === '/people' ? 'page' : undefined}>
                     <Users size={24} aria-hidden="true" />

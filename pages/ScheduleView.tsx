@@ -2,14 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserMode, Activity, PictogramData, TimePeriod } from '../types';
 import { PictogramCard } from '../components/PictogramCard';
-import { Plus, ChevronLeft, ChevronRight, Grid, List, Copy, Trash2, CalendarDays, AlertTriangle, X, Calendar as CalendarIcon, ArrowLeftCircle, ArrowRightCircle, ChevronDown, Sun, Sunset, Moon, Gift, Lock, Book, FileText, Loader2 } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Grid, List, Copy, Trash2, CalendarDays, AlertTriangle, X, Calendar as CalendarIcon, ArrowLeftCircle, ArrowRightCircle, ChevronDown, Sun, Sunset, Moon, Gift, Lock, Book, FileText, Loader2, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
-import { ActivityEditModal } from '../components/ActivityEditModal';
-import { CopyDayModal } from '../components/CopyDayModal';
-import { CongratulationModal } from '../components/CongratulationModal';
-import { RewardConfigModal } from '../components/RewardConfigModal';
 import { RoutineLibraryModal } from '../components/RoutineLibraryModal';
-import { speakText } from '../services/speechService';
 import { exportScheduleToPDF } from '../services/pdfService';
 
 const getDateKey = (d: Date) => {
@@ -24,9 +20,8 @@ const spanishMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'J
 
 export const ScheduleView: React.FC = () => {
   const { 
-    schedule, setSchedule, mode, pictograms, settings, updateActivity, deleteActivity, copyRoutine,
-    rewards, setReward, redeemReward,
-    currentDate, setCurrentDate, changeWeek, goToToday, weekDates 
+    schedule, setSchedule, mode, pictograms, settings, deleteActivity,
+    goToToday, changeWeek, weekDates 
   } = useApp();
   
   const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
@@ -35,17 +30,12 @@ export const ScheduleView: React.FC = () => {
   });
 
   const [viewFormat, setViewFormat] = useState<'linear' | 'grid'>('grid');
-  const [congratsConfig, setCongratsConfig] = useState<{show: boolean, title: string, message: string} | null>(null);
   const [childActivePeriod, setChildActivePeriod] = useState<TimePeriod>('morning');
   
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const [editingDateKey, setEditingDateKey] = useState<string | null>(null);
-  const [activityToEdit, setActivityToEdit] = useState<{dayKey: string, activity: Activity} | null>(null);
-  const [copyingDateKey, setCopyingDateKey] = useState<string | null>(null);
-  const [rewardConfig, setRewardConfig] = useState<{dayKey: string, period: TimePeriod} | null>(null);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [generatingPdfFor, setGeneratingPdfFor] = useState<string | null>(null);
-  const [confirmAction, setConfirmAction] = useState<{ type: 'DELETE_ACTIVITY' | 'CLEAR_DAY'; dayKey: string; activityId?: string; } | null>(null);
 
   const currentChildDayDate = weekDates[selectedDayIndex];
   const currentChildDayKey = currentChildDayDate ? getDateKey(currentChildDayDate) : '';
@@ -65,7 +55,6 @@ export const ScheduleView: React.FC = () => {
   }, [mode]);
 
   const handleAddActivity = (dateKey: string) => {
-    // No permitir agregar en días pasados
     if (dateKey < todayKey) {
         announce("No se pueden agregar actividades a días que ya han pasado.");
         return;
@@ -183,8 +172,8 @@ export const ScheduleView: React.FC = () => {
   return (
     <div className="space-y-6">
       <h1 className="sr-only">Gestión de Agenda Semanal</h1>
-      <header className="bg-white p-4 rounded-2xl shadow-sm border md:flex md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
+      <header className="bg-white p-4 rounded-2xl shadow-sm border md:flex md:items-center md:justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4">
               <nav className="flex items-center bg-slate-100 rounded-xl p-1" aria-label="Navegación semanal">
                 <button onClick={() => { changeWeek(-1); announce("Semana anterior"); }} className="p-2 hover:bg-white rounded-lg" aria-label="Ir a semana anterior">
                     <ArrowLeftCircle size={24} aria-hidden="true" />
@@ -199,8 +188,11 @@ export const ScheduleView: React.FC = () => {
               </h2>
           </div>
 
-          <div className="flex items-center gap-3 mt-4 md:mt-0">
-               <button onClick={() => setIsLibraryOpen(true)} className="bg-brand-secondary text-white px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
+               <Link to="/ai" className="bg-amber-100 text-amber-700 px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-2 border border-amber-200 hover:bg-amber-200 transition-colors shadow-sm">
+                   <Sparkles size={18} className="text-amber-500" /> Asistente Mágico (IA)
+               </Link>
+               <button onClick={() => setIsLibraryOpen(true)} className="bg-brand-secondary text-white px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm">
                    <Book size={18} aria-hidden="true" /> Biblioteca
                </button>
                <div className="flex bg-slate-100 p-1 rounded-lg border">
@@ -245,7 +237,6 @@ export const ScheduleView: React.FC = () => {
                             <PictogramCard 
                                 activity={activity} 
                                 pictogram={getPictogram(activity.pictogramId)}
-                                // Solo pasar la función de borrar si el día NO es pasado
                                 onDelete={!isPast ? () => { deleteActivity(dayKey, activity.id); announce("Actividad eliminada"); } : undefined}
                             />
                         </div>
@@ -256,7 +247,7 @@ export const ScheduleView: React.FC = () => {
       </div>
 
       {isLibraryOpen && <RoutineLibraryModal onClose={() => setIsLibraryOpen(false)} />}
-      {isSelectorOpen && <PictogramSelectorModal onSelect={(pic) => { /* logic */ setIsSelectorOpen(false); announce("Pictograma seleccionado"); }} onClose={() => setIsSelectorOpen(false)} />}
+      {isSelectorOpen && <PictogramSelectorModal onSelect={(pic) => { /* logic inside selector */ setIsSelectorOpen(false); announce("Pictograma seleccionado"); }} onClose={() => setIsSelectorOpen(false)} />}
     </div>
   );
 };

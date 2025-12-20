@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 import { ScheduleView } from './pages/ScheduleView';
 import { PeoplePlaces } from './pages/PeoplePlaces';
 import { SettingsPage } from './pages/SettingsPage';
+import { AIGenerator } from './pages/AIGenerator';
 
 const App: React.FC = () => {
   return (
@@ -13,6 +14,7 @@ const App: React.FC = () => {
         <Layout>
           <Routes>
             <Route path="/" element={<ScheduleView />} />
+            <Route path="/ai" element={<AIGenerator />} />
             <Route path="/people" element={<PeoplePlaces />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
