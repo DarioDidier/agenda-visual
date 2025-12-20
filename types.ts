@@ -1,8 +1,21 @@
+
 import { LucideIcon } from 'lucide-react';
 
 export enum UserMode {
   CHILD = 'CHILD',
   ADULT = 'ADULT'
+}
+
+export enum SupportLevel {
+  LOW = 'bajo',
+  MEDIUM = 'medio',
+  HIGH = 'alto'
+}
+
+export enum DayType {
+  SCHOOL = 'día de escuela',
+  WEEKEND = 'fin de semana',
+  VACATION = 'vacaciones'
 }
 
 export enum DayOfWeek {
@@ -32,8 +45,8 @@ export enum Category {
 export interface PictogramData {
   id: string;
   label: string;
-  iconName?: string; // Mapping to Lucide icon name (optional if arasaacId is present)
-  arasaacId?: number; // ID from ARASAAC API
+  iconName?: string; 
+  arasaacId?: number; 
   category: Category;
   bgColor: string;
   customImageUrl?: string;
@@ -44,7 +57,7 @@ export interface Activity {
   pictogramId: string;
   customLabel?: string;
   time?: string;
-  period?: TimePeriod; // New field for Morning/Afternoon/Evening
+  period?: TimePeriod; 
   isDone: boolean;
   notes?: string;
 }
@@ -54,7 +67,6 @@ export interface SavedRoutine {
   name: string;
   description?: string;
   activities: Activity[];
-  // We include the pictogram data so the receiving device can display them even if they don't have them yet.
   requiredPictograms: PictogramData[]; 
 }
 
@@ -63,24 +75,24 @@ export interface Reward {
   dayKey: string;
   period: TimePeriod;
   label: string;
-  emoji: string; // Simple emoji or icon name
-  imageUrl?: string; // Optional custom image
+  emoji: string; 
+  imageUrl?: string; 
   isRedeemed: boolean;
 }
 
 export interface WeekSchedule {
-  [key: string]: Activity[]; // key is YYYY-MM-DD (ISO Date)
+  [key: string]: Activity[]; 
 }
 
 export interface RewardSchedule {
-  [key: string]: Reward; // key is "YYYY-MM-DD-period"
+  [key: string]: Reward; 
 }
 
 export interface PersonOrPlace {
   id: string;
   name: string;
   type: 'PERSON' | 'PLACE';
-  imageUrl: string; // Placeholder or uploaded
+  imageUrl: string; 
   description?: string;
 }
 
@@ -88,8 +100,8 @@ export interface AppSettings {
   highContrast: boolean;
   showText: boolean;
   voiceEnabled: boolean;
-  autoSpeak: boolean; // Auto speak when clicking an item
-  pin: string; // PIN for Adult mode
+  autoSpeak: boolean; 
+  pin: string; 
   securityQuestion?: string;
   securityAnswer?: string;
 }

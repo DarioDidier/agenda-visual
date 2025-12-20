@@ -1,41 +1,54 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
-import { Category } from "../types";
+import { Category, SupportLevel, DayType } from "../types";
 
-export const generateRoutine = async (query: string): Promise<any[]> => {
+export interface RoutineParams {
+  age: number;
+  dayType: DayType;
+  supportLevel: SupportLevel;
+  additionalInfo?: string;
+}
+
+export const generateRoutine = async (params: RoutineParams): Promise<any[]> => {
   try {
-    // La instancia se crea aquí para usar la clave inyectada más reciente
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
     const categoriesStr = Object.values(Category).join(', ');
+    
+    // Usamos el modelo Flash para máxima velocidad y eficiencia de costos
     const model = 'gemini-3-flash-preview';
+
+    const systemInstruction = `Eres un experto en accesibilidad cognitiva y autismo (TEA). 
+    Tu objetivo es crear rutinas visuales altamente predecibles y claras.
+    
+    CONTEXTO DEL NIÑO/A:
+    - Edad: ${params.age} años.
+    - Tipo de día: ${params.dayType}.
+    - Nivel de apoyo necesario: ${params.supportLevel} (esto determina la complejidad de los pasos).
+    
+    REGLAS DE ACCESIBILIDAD:
+    1. Usa lenguaje simple y positivo.
+    2. Divide las tareas en pasos pequeños si el apoyo es "alto".
+    3. Evita la sobrecarga: máximo 5-7 actividades por bloque.
+    4. Devuelve SOLAMENTE un Array JSON.`;
 
     const response = await ai.models.generateContent({
       model,
-      contents: `Eres un asistente experto en autismo y neurodivergencia. Tu tarea es crear una rutina diaria lógica y clara para la siguiente solicitud: "${query}".
-      
-      Reglas estrictas:
-      1. Devuelve SOLAMENTE un Array JSON válido.
-      2. Usa exactamente estas claves para cada objeto: 
-         - "label": Nombre de la actividad en español.
-         - "arasaacKeyword": Una única palabra clave en español para buscar el pictograma.
-         - "iconName": Nombre de un icono de Lucide en inglés.
-         - "category": Una de estas opciones: ${categoriesStr}.
-         - "period": "morning", "afternoon" o "evening".
-         - "time": Formato HH:MM.
-      3. Asegúrate de que el orden sea cronológico.`,
+      contents: `Genera una rutina de ${params.dayType} para un niño de ${params.age} años con nivel de apoyo ${params.supportLevel}. ${params.additionalInfo || ''}`,
       config: {
+        systemInstruction,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.ARRAY,
           items: {
             type: Type.OBJECT,
             properties: {
-              label: { type: Type.STRING },
-              arasaacKeyword: { type: Type.STRING },
-              iconName: { type: Type.STRING },
-              category: { type: Type.STRING },
-              period: { type: Type.STRING },
-              time: { type: Type.STRING }
+              label: { type: Type.STRING, description: "Nombre claro de la actividad" },
+              arasaacKeyword: { type: Type.STRING, description: "Palabra clave para buscar imagen" },
+              iconName: { type: Type.STRING, description: "Icono de Lucide (ej: Bath, Coffee, Sun)" },
+              category: { type: Type.STRING, description: "Categoría de la actividad" },
+              period: { type: Type.STRING, description: "morning, afternoon o evening" },
+              time: { type: Type.STRING, description: "HH:MM" },
+              description: { type: Type.STRING, description: "Instrucción breve y simple" }
             },
             required: ["label", "category", "iconName", "arasaacKeyword", "period", "time"]
           }
@@ -44,11 +57,11 @@ export const generateRoutine = async (query: string): Promise<any[]> => {
     });
 
     const text = response.text;
-    if (!text) throw new Error("No se recibió respuesta de la IA.");
+    if (!text) throw new Error("No se pudo obtener la rutina.");
 
     return JSON.parse(text);
   } catch (error: any) {
-    console.error("Error en geminiService:", error);
+    console.error("Error en el Asistente Mágico:", error);
     throw error;
   }
 };
