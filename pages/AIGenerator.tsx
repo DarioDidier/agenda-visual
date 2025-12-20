@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Loader2, ArrowRight, Sun, Sunset, Moon, Wand2, Key, Baby, Calendar, HeartPulse, MessageSquareQuote } from 'lucide-react';
+import { Sparkles, Loader2, ArrowRight, Sun, Sunset, Moon, Wand2, Key, Baby, Calendar, HeartPulse, MessageSquareQuote, Info } from 'lucide-react';
 import { generateRoutine, RoutineParams } from '../services/geminiService';
 import { searchArasaac, getArasaacImageUrl } from '../services/arasaacService';
 import { Activity, PictogramData, Category, TimePeriod, SupportLevel, DayType } from '../types';
@@ -16,7 +15,7 @@ const getLocalDateKey = (d: Date = new Date()) => {
 };
 
 const spanishDays = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-const spanishMonths = ['Enero', 'Febrero', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const spanishMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 export const AIGenerator: React.FC = () => {
   const { addPictogram, setSchedule, weekDates } = useApp();
@@ -26,7 +25,7 @@ export const AIGenerator: React.FC = () => {
   
   // Estados del Formulario
   const [age, setAge] = useState<number>(6);
-  const [dayType, setDayType] = useState<DayType>(DayType.SCHOOL);
+  const [dayType, setDayType] = useState<DayType>(DayType.HOME); // Por defecto "Casa"
   const [supportLevel, setSupportLevel] = useState<SupportLevel>(SupportLevel.MEDIUM);
   const [extraInfo, setExtraInfo] = useState('');
 
@@ -56,13 +55,13 @@ export const AIGenerator: React.FC = () => {
   const handleGenerate = async () => {
     if (loading) return;
     
-    // Si no hay API Key, abrimos el selector y continuamos según las reglas de carrera
+    // Verificación de API Key siguiendo lineamientos de la plataforma
     if (aistudio) {
         const hasKey = await aistudio.hasSelectedApiKey();
         if (!hasKey) {
+            // Si no hay llave, abrimos el selector y procedemos de inmediato (mitigación de carrera)
             await aistudio.openSelectKey();
             setApiKeySelected(true);
-            // No retornamos aquí, continuamos con la ejecución asumiendo éxito
         }
     }
 
@@ -77,7 +76,9 @@ export const AIGenerator: React.FC = () => {
         additionalInfo: extraInfo
       };
 
+      // Llamamos al servicio (instancia GoogleGenAI internamente)
       const items = await generateRoutine(params);
+      
       const enhancedItems = await Promise.all(items.map(async (item) => {
         let arasaacId = undefined;
         if (item.arasaacKeyword) {
@@ -87,7 +88,7 @@ export const AIGenerator: React.FC = () => {
               arasaacId = results[0]._id;
             }
           } catch (e) {
-            console.warn("No pictograma:", item.arasaacKeyword);
+            console.warn("No se encontró pictograma para:", item.arasaacKeyword);
           }
         }
         return { ...item, arasaacId };
@@ -96,11 +97,12 @@ export const AIGenerator: React.FC = () => {
       setGeneratedItems(enhancedItems);
     } catch (e: any) {
       console.error("Error al generar rutina:", e);
-      if (e.message?.includes('API key') || e.message?.includes('entity was not found')) {
+      // Si falla por falta de llave o error de entidad, pedimos re-seleccionar
+      if (e.message?.includes('API key') || e.message?.includes('not found')) {
         setApiKeySelected(false);
-        alert('Por favor, selecciona una API Key válida para continuar.');
+        if (aistudio) await aistudio.openSelectKey();
       } else {
-        alert(`Lo sentimos, hubo un error: ${e.message || 'Error de conexión'}`);
+        alert(`Error: ${e.message || 'No se pudo conectar con el asistente.'}`);
       }
     } finally {
       setLoading(false);
@@ -151,7 +153,7 @@ export const AIGenerator: React.FC = () => {
     
     setGeneratedItems([]);
     setExtraInfo('');
-    alert(`¡Rutina aplicada con éxito!`);
+    alert(`¡Rutina aplicada correctamente!`);
   };
 
   const getDayDetails = (dateStr: string) => {
@@ -171,7 +173,7 @@ export const AIGenerator: React.FC = () => {
             <Sparkles size={16} /> Motor Inteligente Gratuito
         </div>
         <h2 className="text-3xl font-bold text-slate-800">Asistente de Rutinas</h2>
-        <p className="text-slate-500">Configura el perfil para una rutina adaptada y predecible.</p>
+        <p className="text-slate-500">Crea rutinas mágicas y adaptadas para cada día.</p>
       </div>
 
       <div className="bg-white p-6 rounded-3xl shadow-xl border-2 border-slate-100 space-y-6">
@@ -196,8 +198,8 @@ export const AIGenerator: React.FC = () => {
                     value={dayType} onChange={(e) => setDayType(e.target.value as DayType)}
                     className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-primary"
                 >
-                    <option value={DayType.SCHOOL}>Escuela</option>
                     <option value={DayType.HOME}>Casa</option>
+                    <option value={DayType.SCHOOL}>Escuela</option>
                     <option value={DayType.WEEKEND}>Fin de semana</option>
                     <option value={DayType.VACATION}>Vacaciones</option>
                 </select>
@@ -222,7 +224,7 @@ export const AIGenerator: React.FC = () => {
             <textarea 
                 value={extraInfo}
                 onChange={(e) => setExtraInfo(e.target.value)}
-                placeholder="Ej: Incluir terapia por la tarde, evitar texturas pegajosas en la comida..."
+                placeholder="Ej: Incluir lavarse las manos antes de comer, juego libre por la tarde..."
                 className="w-full p-4 border rounded-2xl h-24 focus:border-brand-primary outline-none resize-none bg-slate-50 text-slate-800 text-sm"
             />
         </div>
@@ -234,35 +236,23 @@ export const AIGenerator: React.FC = () => {
                 className="w-full bg-brand-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 disabled:opacity-50 shadow-lg shadow-brand-primary/20 active:scale-95 transition-all text-lg"
             >
                 {loading ? <Loader2 className="animate-spin" /> : <Wand2 size={20} />}
-                {loading ? 'Construyendo rutina...' : 'Crear Rutina Automáticamente'}
+                {loading ? 'Consultando a la IA...' : 'Crear Rutina Automáticamente'}
             </button>
+            {!apiKeySelected && (
+                <p className="text-[10px] text-red-500 mt-2 text-center font-bold">
+                    Se requiere configurar una API Key de Google Cloud (Pago por uso o capa gratuita).
+                </p>
+            )}
         </div>
       </div>
-
-      {!apiKeySelected && (
-        <div className="bg-indigo-50 border-2 border-indigo-200 p-6 rounded-3xl flex flex-col items-center gap-4 text-center animate-in zoom-in-95">
-          <Key className="text-indigo-500" size={32} />
-          <div>
-            <h3 className="font-bold text-indigo-900">Configuración Requerida</h3>
-            <p className="text-indigo-700 text-sm mt-1">Para usar el asistente, debes conectar tu cuenta de Google AI.</p>
-            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-xs underline text-indigo-400 block mt-2">¿Por qué es necesario?</a>
-          </div>
-          <button 
-            onClick={handleOpenKeySelector}
-            className="bg-brand-primary text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-brand-primary/20 hover:scale-105 transition-transform"
-          >
-            Configurar Conexión Mágica
-          </button>
-        </div>
-      )}
 
       {generatedItems.length > 0 && (
           <div className="bg-indigo-50 p-6 rounded-3xl border-2 border-indigo-100 space-y-6 animate-in zoom-in-95">
             <div className="flex items-center justify-between">
                 <h3 className="font-bold text-indigo-900 flex items-center gap-2">
-                    <Sparkles className="text-indigo-400" size={18} /> Sugerencia de la IA
+                    <Sparkles className="text-indigo-400" size={18} /> Sugerencia Generada
                 </h3>
-                <span className="text-[10px] uppercase font-black text-indigo-400 tracking-widest">Toca para personalizar</span>
+                <span className="text-[10px] uppercase font-black text-indigo-400 tracking-widest">Toca un paso para cambiar la imagen</span>
             </div>
             
             <div className="grid grid-cols-1 gap-3">
@@ -322,6 +312,22 @@ export const AIGenerator: React.FC = () => {
                     Integrar en mi Agenda Visual <ArrowRight size={20} />
                 </button>
             </div>
+          </div>
+      )}
+
+      {!apiKeySelected && (
+          <div className="mt-8 bg-amber-50 border-2 border-amber-200 p-6 rounded-3xl flex flex-col items-center gap-4 text-center">
+              <Key className="text-amber-500" size={32} />
+              <div>
+                  <h3 className="font-bold text-amber-900">Configuración de IA necesaria</h3>
+                  <p className="text-amber-700 text-sm mt-1">Para habilitar el asistente automático, debes seleccionar un proyecto con facturación habilitada o usar la capa gratuita de Google AI Studio.</p>
+              </div>
+              <button 
+                  onClick={handleOpenKeySelector}
+                  className="bg-brand-primary text-white px-8 py-3 rounded-2xl font-bold shadow-lg"
+              >
+                  Vincular API Key
+              </button>
           </div>
       )}
 
