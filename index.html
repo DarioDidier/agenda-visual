@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NeuroVisual</title>
+    <title>NeuroVisual - Agenda Visual Inclusiva</title>
     <!-- Favicon Generated from Logo SVG -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 200 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 75 V95 Q50 105 60 105 H140 Q150 105 150 95 V75' stroke='%23A78BFA' stroke-width='6' stroke-linecap='round' fill='none'/%3E%3Cpath d='M100 85 V105' stroke='%23A78BFA' stroke-width='6' stroke-linecap='round'/%3E%3Cpath d='M100 85 C100 85 65 85 65 60 C65 45 70 40 80 35 C75 25 80 15 90 15 C95 15 100 20 100 25 V85 Z' fill='%236FAEE5'/%3E%3Ccircle cx='85' cy='45' r='12' fill='%2388C0F0'/%3E%3Cpath d='M100 85 C100 85 135 85 135 60 C135 45 130 40 120 35 C125 25 120 15 110 15 C105 15 100 20 100 25 V85 Z' fill='%237FD1B9'/%3E%3Ccircle cx='115' cy='45' r='12' fill='%239AE2CD'/%3E%3Ccircle cx='90' cy='65' r='3' fill='%231E3A8A'/%3E%3Ccircle cx='110' cy='65' r='3' fill='%231E3A8A'/%3E%3Cpath d='M96 70 Q100 75 104 70' stroke='%231E3A8A' stroke-width='2' stroke-linecap='round'/%3E%3Crect x='40' y='65' width='20' height='20' rx='4' fill='%23FCD34D' stroke='%23F59E0B' stroke-width='2'/%3E%3Crect x='44' y='69' width='12' height='12' rx='2' fill='%23A78BFA'/%3E%3Crect x='140' y='65' width='20' height='20' rx='4' fill='%23FCD34D' stroke='%23F59E0B' stroke-width='2'/%3E%3Crect x='144' y='69' width='12' height='12' rx='2' fill='%23FEF3C7'/%3E%3Crect x='88' y='95' width='24' height='24' rx='4' fill='%23FCD34D'/%3E%3Cpath d='M89 107 C89 107 94 102 100 102 C106 102 111 107 111 107 C111 107 106 112 100 112 C94 112 89 107 89 107 Z' fill='white'/%3E%3Ccircle cx='100' cy='107' r='2.5' fill='%23F59E0B'/%3E%3C/svg%3E" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,7 +27,27 @@
         }
       }
     </script>
-    <!-- Polyfill essential globals to prevent crashes if process is accessed directly at runtime -->
+    <style>
+      /* Estilos globales de accesibilidad */
+      .skip-link {
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: #0EA5E9;
+        color: white;
+        padding: 8px;
+        z-index: 100;
+        transition: top 0.3s;
+      }
+      .skip-link:focus {
+        top: 0;
+      }
+      /* Anillo de foco consistente */
+      :focus-visible {
+        outline: 4px solid #F59E0B !important;
+        outline-offset: 2px;
+      }
+    </style>
     <script>
       window.process = window.process || { env: { API_KEY: '' } };
     </script>
@@ -48,6 +68,7 @@
 </script>
 </head>
   <body class="bg-slate-50 text-slate-900 antialiased selection:bg-brand-primary selection:text-white">
+    <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

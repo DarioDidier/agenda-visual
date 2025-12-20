@@ -28,37 +28,32 @@ export const PictogramCard: React.FC<Props> = ({
   const { mode, settings, toggleActivityDone } = useApp();
   const { highContrast, showText } = settings;
 
+  const labelText = activity.customLabel || pictogram.label;
+  const statusText = activity.isDone ? 'Completado' : 'Pendiente';
+  const timeText = activity.time ? `a las ${activity.time}` : '';
+
   const handleClick = () => {
-    // Only speak on click if in Child mode or if not clicking controls in Adult mode
     if (settings.voiceEnabled && settings.autoSpeak) {
-      const textToSpeak = activity.customLabel || pictogram.label;
-      speakText(textToSpeak);
+      speakText(labelText);
     }
   };
 
-  const handleDoneToggle = (e: React.MouseEvent) => {
+  const handleDoneToggle = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
     if (day) {
         if (!activity.isDone) {
-            if(settings.voiceEnabled) speakText(`¡Muy bien! ${activity.customLabel || pictogram.label} terminado.`);
+            if(settings.voiceEnabled) speakText(`¡Muy bien! ${labelText} terminado.`);
         }
         toggleActivityDone(day, activity.id);
     }
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleAction = (e: React.MouseEvent | React.KeyboardEvent, action?: () => void) => {
     e.preventDefault();
-    e.stopPropagation(); // Stop bubbling to card click
-    if (onDelete) onDelete();
+    e.stopPropagation();
+    if (action) action();
   };
 
-  const handleEditClick = (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (onEdit) onEdit();
-  };
-
-  // High Contrast Colors Updated to Cyan/Celeste
   const cardBg = highContrast 
     ? (activity.isDone ? 'bg-black border-4 border-white' : 'bg-white border-4 border-cyan-400') 
     : (activity.isDone ? 'bg-green-100 border-green-300' : pictogram.bgColor);
@@ -69,9 +64,9 @@ export const PictogramCard: React.FC<Props> = ({
 
   const renderImage = () => {
     if (pictogram.customImageUrl) {
-        return <img src={pictogram.customImageUrl} alt={pictogram.label} className="h-16 w-16 object-cover rounded-lg" />;
+        return <img src={pictogram.customImageUrl} alt="" aria-hidden="true" className="h-16 w-16 object-cover rounded-lg" />;
     } else if (pictogram.arasaacId) {
-        return <img src={getArasaacImageUrl(pictogram.arasaacId)} alt={pictogram.label} className="h-20 w-20 object-contain" />;
+        return <img src={getArasaacImageUrl(pictogram.arasaacId)} alt="" aria-hidden="true" className="h-20 w-20 object-contain" />;
     } else {
         return <PictogramIcon 
                 name={pictogram.iconName || 'HelpCircle'} 
@@ -81,81 +76,109 @@ export const PictogramCard: React.FC<Props> = ({
     }
   };
 
+  if (mode === UserMode.CHILD) {
+    return (
+      <button 
+        onClick={handleClick}
+        aria-label={`${labelText}. ${statusText}. ${timeText}`}
+        aria-pressed={activity.isDone}
+        className={`
+          relative flex flex-col items-center justify-between p-2 rounded-2xl shadow-sm transition-all duration-300
+          ${cardBg} h-48 w-full active:scale-95 cursor-pointer
+          ${activity.isDone ? 'opacity-60 grayscale' : ''}
+          border-b-4 group
+        `}
+      >
+        {activity.time && (
+          <span className={`text-xs font-bold ${highContrast ? 'bg-black text-cyan-300 px-1' : 'bg-white/50 text-slate-600'} rounded px-2 mb-1`}>
+            {activity.time}
+          </span>
+        )}
+        <div className="flex-1 flex items-center justify-center w-full">
+           {renderImage()}
+        </div>
+        {showText && (
+          <span className={`text-center font-bold leading-tight text-lg ${textColor} mt-2 line-clamp-2`}>
+            {labelText}
+          </span>
+        )}
+        {day && (
+          <div 
+            onClick={handleDoneToggle}
+            className={`absolute top-2 right-2 p-3 rounded-full ${activity.isDone ? 'bg-green-500 text-white' : 'bg-white/80 text-gray-400'} shadow-md z-20`}
+          >
+            <Check size={28} strokeWidth={4} aria-hidden="true" />
+          </div>
+        )}
+      </button>
+    );
+  }
+
   return (
     <div 
-      onClick={handleClick}
       className={`
         relative flex flex-col items-center justify-between p-2 rounded-2xl shadow-sm transition-all duration-300
-        ${cardBg}
-        ${mode === UserMode.CHILD ? 'h-48 w-full active:scale-95 cursor-pointer' : 'h-40 w-full'}
-        ${activity.isDone && mode === UserMode.CHILD ? 'opacity-60 grayscale' : ''}
-        border-b-4 group
+        ${cardBg} h-40 w-full border-b-4 group
       `}
+      role="region"
+      aria-label={`Actividad: ${labelText}`}
     >
-      {/* Time Label */}
       {activity.time && (
         <span className={`text-xs font-bold ${highContrast ? 'bg-black text-cyan-300 px-1' : 'bg-white/50 text-slate-600'} rounded px-2 mb-1`}>
           {activity.time}
         </span>
       )}
-
-      {/* Image/Icon */}
-      <div className="flex-1 flex items-center justify-center w-full">
+      <div className="flex-1 flex items-center justify-center w-full" onClick={handleClick}>
          {renderImage()}
       </div>
-
-      {/* Text Label */}
       {showText && (
-        <span className={`text-center font-bold leading-tight ${mode === UserMode.CHILD ? 'text-lg' : 'text-sm'} ${textColor} mt-2 line-clamp-2`}>
-          {activity.customLabel || pictogram.label}
+        <span className={`text-center font-bold leading-tight text-sm ${textColor} mt-2 line-clamp-2`}>
+          {labelText}
         </span>
       )}
 
-      {/* Interaction Layer - Child */}
-      {mode === UserMode.CHILD && day && (
-        <button 
-          onClick={handleDoneToggle}
-          className={`absolute top-2 right-2 p-3 rounded-full ${activity.isDone ? 'bg-green-500 text-white' : 'bg-white/80 text-gray-400 hover:bg-green-200'} shadow-md transition-colors z-20`}
-          aria-label={activity.isDone ? "Marcar como pendiente" : "Marcar como hecho"}
-        >
-          <Check size={28} strokeWidth={4} />
-        </button>
-      )}
-
-      {/* Interaction Layer - Adult (Edit Controls) - High Z-Index ensuring clickability */}
-      {mode === UserMode.ADULT && (
-        <>
-            <div className="absolute -top-3 -right-2 z-50">
-                {onDelete && (
-                    <button 
-                        onClick={handleDelete} 
-                        className="flex items-center justify-center w-8 h-8 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md border-2 border-white transform active:scale-95 transition-all cursor-pointer" 
-                        title="Eliminar actividad"
-                    >
-                        <Trash2 size={16} />
-                    </button>
-                )}
-            </div>
-            
-            <div className="absolute top-1 left-1 z-40">
-                {onEdit && (
-                    <button onClick={handleEditClick} className="p-1.5 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 shadow-sm border border-blue-200 cursor-pointer" title="Editar">
-                        <Pencil size={14} />
-                    </button>
-                )}
-            </div>
-            
-            {onMoveUp && onMoveDown && (
-                <div className="absolute bottom-1 right-1 flex flex-row gap-1 z-40">
-                    <button onClick={(e) => { e.stopPropagation(); onMoveUp(); }} className="p-1 bg-white/80 text-slate-600 rounded-full hover:bg-white shadow-sm border cursor-pointer">
-                        <ArrowUp size={14} />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); onMoveDown(); }} className="p-1 bg-white/80 text-slate-600 rounded-full hover:bg-white shadow-sm border cursor-pointer">
-                        <ArrowDown size={14} />
-                    </button>
-                </div>
-            )}
-        </>
+      {/* Controles Modo Adulto con etiquetas descriptivas */}
+      <div className="absolute -top-3 -right-2 z-50 flex flex-col gap-1">
+          {onDelete && (
+              <button 
+                  onClick={(e) => handleAction(e, onDelete)} 
+                  className="w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md border-2 border-white"
+                  aria-label={`Eliminar ${labelText}`}
+              >
+                  <Trash2 size={16} aria-hidden="true" />
+              </button>
+          )}
+      </div>
+      
+      <div className="absolute top-1 left-1 z-40">
+          {onEdit && (
+              <button 
+                  onClick={(e) => handleAction(e, onEdit)} 
+                  className="p-1.5 bg-blue-100 text-blue-600 rounded-full border border-blue-200 shadow-sm"
+                  aria-label={`Editar ${labelText}`}
+              >
+                  <Pencil size={14} aria-hidden="true" />
+              </button>
+          )}
+      </div>
+      
+      {onMoveUp && onMoveDown && (
+          <div className="absolute bottom-1 right-1 flex flex-row gap-1 z-40">
+              <button 
+                  onClick={(e) => handleAction(e, onMoveUp)} 
+                  className="p-1 bg-white/80 text-slate-600 rounded-full border shadow-sm"
+                  aria-label={`Mover ${labelText} hacia arriba`}
+              >
+                  <ArrowUp size={14} aria-hidden="true" />
+              </button>
+              <button 
+                  onClick={(e) => handleAction(e, onMoveDown)} 
+                  className="p-1 bg-white/80 text-slate-600 rounded-full border shadow-sm"
+                  aria-label={`Mover ${labelText} hacia abajo`}
+              >
+                  <ArrowDown size={14} aria-hidden="true" />
+              </button>
+          </div>
       )}
     </div>
   );
