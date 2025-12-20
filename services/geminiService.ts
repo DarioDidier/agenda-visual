@@ -29,7 +29,8 @@ export const generateRoutine = async (params: RoutineParams): Promise<any[]> => 
     1. Usa lenguaje simple y positivo.
     2. Divide las tareas en pasos pequeños si el apoyo es "alto".
     3. Evita la sobrecarga: máximo 5-7 actividades por bloque.
-    4. Devuelve SOLAMENTE un Array JSON.`;
+    4. Si el tipo de día es "casa", enfócate en tareas domésticas, ocio en el hogar y autonomía personal.
+    5. Devuelve SOLAMENTE un Array JSON.`;
 
     const response = await ai.models.generateContent({
       model,
@@ -57,7 +58,7 @@ export const generateRoutine = async (params: RoutineParams): Promise<any[]> => 
     });
 
     const text = response.text;
-    if (!text) throw new Error("No se pudo obtener la rutina.");
+    if (!text) throw new Error("No se pudo obtener la rutina de los servidores de IA.");
 
     return JSON.parse(text);
   } catch (error: any) {

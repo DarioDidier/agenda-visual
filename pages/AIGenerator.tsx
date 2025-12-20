@@ -54,6 +54,18 @@ export const AIGenerator: React.FC = () => {
   };
 
   const handleGenerate = async () => {
+    if (loading) return;
+    
+    // Si no hay API Key, abrimos el selector y continuamos según las reglas de carrera
+    if (aistudio) {
+        const hasKey = await aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+            await aistudio.openSelectKey();
+            setApiKeySelected(true);
+            // No retornamos aquí, continuamos con la ejecución asumiendo éxito
+        }
+    }
+
     setLoading(true);
     setGeneratedItems([]);
     
@@ -83,11 +95,12 @@ export const AIGenerator: React.FC = () => {
 
       setGeneratedItems(enhancedItems);
     } catch (e: any) {
-      console.error(e);
-      if (e.message?.includes('API key')) {
+      console.error("Error al generar rutina:", e);
+      if (e.message?.includes('API key') || e.message?.includes('entity was not found')) {
         setApiKeySelected(false);
+        alert('Por favor, selecciona una API Key válida para continuar.');
       } else {
-        alert(`Error: ${e.message || 'No se pudo conectar con el motor de IA.'}`);
+        alert(`Lo sentimos, hubo un error: ${e.message || 'Error de conexión'}`);
       }
     } finally {
       setLoading(false);
@@ -184,6 +197,7 @@ export const AIGenerator: React.FC = () => {
                     className="w-full p-2.5 bg-slate-50 border rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-primary"
                 >
                     <option value={DayType.SCHOOL}>Escuela</option>
+                    <option value={DayType.HOME}>Casa</option>
                     <option value={DayType.WEEKEND}>Fin de semana</option>
                     <option value={DayType.VACATION}>Vacaciones</option>
                 </select>
@@ -224,6 +238,23 @@ export const AIGenerator: React.FC = () => {
             </button>
         </div>
       </div>
+
+      {!apiKeySelected && (
+        <div className="bg-indigo-50 border-2 border-indigo-200 p-6 rounded-3xl flex flex-col items-center gap-4 text-center animate-in zoom-in-95">
+          <Key className="text-indigo-500" size={32} />
+          <div>
+            <h3 className="font-bold text-indigo-900">Configuración Requerida</h3>
+            <p className="text-indigo-700 text-sm mt-1">Para usar el asistente, debes conectar tu cuenta de Google AI.</p>
+            <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-xs underline text-indigo-400 block mt-2">¿Por qué es necesario?</a>
+          </div>
+          <button 
+            onClick={handleOpenKeySelector}
+            className="bg-brand-primary text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-brand-primary/20 hover:scale-105 transition-transform"
+          >
+            Configurar Conexión Mágica
+          </button>
+        </div>
+      )}
 
       {generatedItems.length > 0 && (
           <div className="bg-indigo-50 p-6 rounded-3xl border-2 border-indigo-100 space-y-6 animate-in zoom-in-95">

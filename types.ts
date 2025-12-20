@@ -15,7 +15,8 @@ export enum SupportLevel {
 export enum DayType {
   SCHOOL = 'día de escuela',
   WEEKEND = 'fin de semana',
-  VACATION = 'vacaciones'
+  VACATION = 'vacaciones',
+  HOME = 'casa'
 }
 
 export enum DayOfWeek {
