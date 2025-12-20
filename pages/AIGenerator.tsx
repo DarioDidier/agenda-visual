@@ -43,7 +43,7 @@ export const AIGenerator: React.FC = () => {
               arasaacId = results[0]._id;
             }
           } catch (e) {
-            console.warn("Could not find arasaac image for", item.arasaacKeyword);
+            console.warn("No se encontró imagen para", item.arasaacKeyword);
           }
         }
         return { ...item, arasaacId };
@@ -52,7 +52,7 @@ export const AIGenerator: React.FC = () => {
       setGeneratedItems(enhancedItems);
     } catch (e: any) {
       console.error(e);
-      alert(`Error al generar: ${e.message || 'Verifica tu conexión o API Key'}`);
+      alert(`Lo sentimos, hubo un problema al generar la rutina: ${e.message || 'Error de conexión'}`);
     } finally {
       setLoading(false);
     }

@@ -1,56 +1,31 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Category } from "../types";
 
-// Helper to reliably get the API Key from various sources
-const getApiKey = (): string => {
-    // 1. Check Local Storage (User manual entry in Settings)
-    const localKey = localStorage.getItem('mav_custom_api_key');
-    if (localKey && localKey.trim() !== '') {
-        return localKey.trim();
-    }
-
-    // 2. Check Standard Vite Env Var (Recommended for browser)
-    // Cast to any to avoid TypeScript errors if types aren't explicitly defined
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const viteEnv = (import.meta as any).env;
-    if (viteEnv && viteEnv.VITE_API_KEY) {
-        return viteEnv.VITE_API_KEY;
-    }
-
-    // 3. Check Process Env (Injected via vite.config define)
-    if (process.env.API_KEY) {
-        return process.env.API_KEY;
-    }
-
-    return '';
-};
-
 export const generateRoutine = async (query: string): Promise<any[]> => {
   try {
-    const apiKey = getApiKey();
-    
-    // Debugging check
-    if (!apiKey) {
-        throw new Error("Falta la API Key. Ve a 'Ajustes' para ingresarla manualmente, o configura VITE_API_KEY en tu entorno.");
-    }
+    // Inicialización directa usando la variable de entorno inyectada
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    const ai = new GoogleGenAI({ apiKey });
-
-    // We ask Gemini to return a JSON list of activities.
-    // We provide the list of available categories to help it categorize.
+    // Lista de categorías disponibles para el contexto de la IA
     const categoriesStr = Object.values(Category).join(', ');
 
-    const model = 'gemini-2.5-flash';
+    // Usamos gemini-3-flash-preview para tareas de generación de texto/JSON
+    const model = 'gemini-3-flash-preview';
 
     const response = await ai.models.generateContent({
       model,
-      contents: `Eres un asistente experto en autismo. Crea una rutina JSON para: "${query}".
+      contents: `Eres un asistente experto en autismo y neurodivergencia. Tu tarea es crear una rutina diaria lógica y clara para la siguiente solicitud: "${query}".
       
-      Reglas:
-      1. Devuelve SOLAMENTE un Array JSON válido: [ { ... }, { ... } ].
-      2. No incluyas texto antes ni después, ni bloques markdown markdown como \`\`\`json.
-      3. Usa claves: "label" (nombre corto), "arasaacKeyword" (1 palabra clave español), "iconName" (icono Lucide inglés), "category" (valores: ${categoriesStr}), "period" (morning, afternoon, evening), "time" (HH:MM).
-      `,
+      Reglas estrictas:
+      1. Devuelve SOLAMENTE un Array JSON válido.
+      2. Usa exactamente estas claves para cada objeto: 
+         - "label": Nombre de la actividad en español (ej: "Lavarse los dientes").
+         - "arasaacKeyword": Una única palabra clave en español para buscar el pictograma (ej: "dientes").
+         - "iconName": Nombre de un icono de Lucide en inglés que represente la acción (ej: "Sparkles").
+         - "category": Una de estas opciones: ${categoriesStr}.
+         - "period": "morning", "afternoon" o "evening".
+         - "time": Formato HH:MM (ej: "08:30").
+      3. Asegúrate de que el orden sea cronológico.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -65,31 +40,21 @@ export const generateRoutine = async (query: string): Promise<any[]> => {
               period: { type: Type.STRING },
               time: { type: Type.STRING }
             },
-            required: ["label", "category", "iconName", "arasaacKeyword", "period"]
+            required: ["label", "category", "iconName", "arasaacKeyword", "period", "time"]
           }
         }
       }
     });
 
+    // Acceso directo a .text según las directrices del SDK
     const text = response.text;
     if (!text) throw new Error("La IA no devolvió contenido.");
 
-    console.log("Gemini Raw Response:", text);
-
-    // Robust JSON Extraction: Find the first '[' and the last ']'
-    const firstBracket = text.indexOf('[');
-    const lastBracket = text.lastIndexOf(']');
-
-    if (firstBracket === -1 || lastBracket === -1) {
-        throw new Error("La respuesta no contiene una lista válida.");
-    }
-
-    const jsonString = text.substring(firstBracket, lastBracket + 1);
-    
-    return JSON.parse(jsonString);
+    // Parsear el JSON retornado
+    return JSON.parse(text);
 
   } catch (error) {
-    console.error("Error generating routine:", error);
-    throw error; // Propagate error to UI
+    console.error("Error en el Asistente Mágico:", error);
+    throw error;
   }
 };
