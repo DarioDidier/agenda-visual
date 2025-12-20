@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { Category, SupportLevel, DayType } from "../types";
 
@@ -8,59 +9,62 @@ export interface RoutineParams {
   additionalInfo?: string;
 }
 
-export const generateRoutine = async (params: RoutineParams): Promise<any[]> => {
+export const generateRoutine = async (params: RoutineParams): Promise<any> => {
   try {
-    // Se instancia justo antes del uso para asegurar que usa la API Key actual del entorno
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const categoriesStr = Object.values(Category).join(', ');
     
+    // Usamos el modelo Flash para máxima velocidad y eficiencia de costos
     const model = 'gemini-3-flash-preview';
 
-    const systemInstruction = `Eres un experto en accesibilidad cognitiva y autismo (TEA). 
-    Tu objetivo es crear rutinas visuales altamente predecibles, claras y funcionales.
+    const systemInstruction = `Eres un asistente especializado en crear rutinas visuales accesibles para niños y niñas, utilizando pictogramas y horarios, con un enfoque profundo en autismo (TEA) y neurodivergencia.
     
-    CONTEXTO DEL NIÑO/A:
-    - Edad: ${params.age} años.
-    - Tipo de día: ${params.dayType}.
-    - Nivel de apoyo necesario: ${params.supportLevel} (esto determina la complejidad de los pasos).
+    Tu objetivo es crear rutinas predecibles, claras y funcionales que reduzcan la ansiedad y fomenten la autonomía.
     
-    REGLAS DE ACCESIBILIDAD:
-    1. Usa lenguaje simple, directo y en primera persona o infinitivo.
-    2. Si el apoyo es "alto", desglosa las actividades en pasos muy pequeños y concretos.
-    3. Si el tipo de día es "casa", enfócate exclusivamente en actividades del hogar: autonomía (vestirse, higiene), tareas domésticas simples, juego libre en casa y descanso.
-    4. Devuelve SOLAMENTE un Array JSON válido.`;
+    REGLAS DE GENERACIÓN:
+    1. Lenguaje simple, concreto y positivo.
+    2. Actividades claras y predecibles.
+    3. Para nivel de apoyo "alto", desglosa tareas en pasos muy pequeños.
+    4. Cada actividad debe tener un horario (HH:MM), un pictograma (keyword), una descripción corta y una categoría.
+    5. Devuelve un objeto JSON con la estructura: { "dia": string, "rutina": Array }.`;
 
     const response = await ai.models.generateContent({
       model,
-      contents: `Genera una rutina de ${params.dayType} para un niño de ${params.age} años con nivel de apoyo ${params.supportLevel}. Detalles extra: ${params.additionalInfo || 'Ninguno'}`,
+      contents: `Crea una rutina de ${params.dayType} para un niño/a de ${params.age} años con nivel de apoyo ${params.supportLevel}. Info extra: ${params.additionalInfo || 'Ninguna'}`,
       config: {
         systemInstruction,
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              label: { type: Type.STRING, description: "Nombre de la actividad" },
-              arasaacKeyword: { type: Type.STRING, description: "Palabra clave para el pictograma" },
-              iconName: { type: Type.STRING, description: "Icono de respaldo" },
-              category: { type: Type.STRING, description: "Categoría de la actividad" },
-              period: { type: Type.STRING, description: "morning, afternoon o evening" },
-              time: { type: Type.STRING, description: "HH:MM" },
-              description: { type: Type.STRING, description: "Explicación muy breve" }
-            },
-            required: ["label", "category", "iconName", "arasaacKeyword", "period", "time"]
-          }
+          type: Type.OBJECT,
+          properties: {
+            dia: { type: Type.STRING, description: "Día de la semana de la rutina" },
+            rutina: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  hora: { type: Type.STRING, description: "Formato HH:MM" },
+                  actividad: { type: Type.STRING, description: "Nombre simple de la tarea" },
+                  pictograma: { type: Type.STRING, description: "Palabra clave para buscar imagen (ARASAAC)" },
+                  descripcion: { type: Type.STRING, description: "Explicación breve y clara" },
+                  categoria: { type: Type.STRING, description: "Categoría de la actividad" },
+                  periodo: { type: Type.STRING, description: "morning, afternoon o evening" },
+                  icono_lucide: { type: Type.STRING, description: "Nombre de icono de Lucide (ej: Bath, Coffee, Utensils)" }
+                },
+                required: ["hora", "actividad", "pictograma", "descripcion", "categoria", "periodo", "icono_lucide"]
+              }
+            }
+          },
+          required: ["dia", "rutina"]
         }
       }
     });
 
     const text = response.text;
-    if (!text) throw new Error("No se recibió contenido de la IA.");
+    if (!text) throw new Error("No se pudo obtener la rutina.");
 
     return JSON.parse(text);
   } catch (error: any) {
-    console.error("Error en generateRoutine:", error);
+    console.error("Error en el Asistente Mágico:", error);
     throw error;
   }
 };
