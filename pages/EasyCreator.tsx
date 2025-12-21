@@ -9,8 +9,8 @@ import { speakText } from '../services/speechService';
 import { exportScheduleToPDF } from '../services/pdfService';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
 
-// Generador de ID seguro local (Evita el crash de crypto.randomUUID)
-const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+// Generador de ID robusto y compatible
+const generateSafeId = () => Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
 
 const getDateKey = (d: Date) => {
     const year = d.getFullYear();
@@ -73,7 +73,7 @@ export const EasyCreator: React.FC = () => {
       if (validPics.length > 0) {
           setStep(2);
       } else {
-          speakText("No encontré dibujos. Intenta con otras palabras.");
+          speakText("No encontré dibujos.");
       }
     } catch (e) {
       speakText("Error al buscar.");
@@ -86,9 +86,9 @@ export const EasyCreator: React.FC = () => {
     try {
         if (draftPics.length === 0) return;
 
-        // 1. Preparar actividades con IDs seguros
-        const newActivities: Activity[] = draftPics.map(pic => {
-          addPictogram(pic);
+        // Clonar datos para evitar mutaciones de estado directo
+        const activitiesToAdd: Activity[] = draftPics.map(pic => {
+          addPictogram({ ...pic });
           return {
             id: generateSafeId(),
             pictogramId: pic.id,
@@ -99,37 +99,39 @@ export const EasyCreator: React.FC = () => {
           };
         });
 
-        // 2. Actualizar agenda
+        // Actualización de estado segura
         setSchedule(prev => {
-            const currentDayActivities = prev[selectedDay] || [];
-            const updatedDay = [...currentDayActivities, ...newActivities];
-            updatedDay.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
-            return { ...prev, [selectedDay]: updatedDay };
+            const currentSchedule = prev || {};
+            const dayActivities = [...(currentSchedule[selectedDay] || []), ...activitiesToAdd];
+            dayActivities.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
+            
+            return {
+                ...currentSchedule,
+                [selectedDay]: dayActivities
+            };
         });
 
-        speakText("Agenda guardada");
+        speakText("Guardado");
         setShowSuccess(true);
         
+        // Reset controlado
         setTimeout(() => {
             setShowSuccess(false);
             setStep(1);
             setInputText('');
             setDraftPics([]);
-        }, 2000);
+        }, 1500);
     } catch (error) {
-        console.error("Error al guardar:", error);
-        alert("Ocurrió un problema al guardar. Por favor reintenta.");
+        console.error("Fatal save error:", error);
+        alert("Hubo un error al guardar. Intenta de nuevo.");
     }
   };
 
   const handleExportToday = async () => {
     const activities = draftPics.length > 0 ? draftPics.map(p => ({ pictogramId: p.id, customLabel: p.label } as Activity)) : [];
-    if (activities.length === 0) {
-        speakText("No hay nada para imprimir.");
-        return;
-    }
-    speakText("Preparando papel.");
-    await exportScheduleToPDF("Mi Nueva Rutina", activities, [...pictograms, ...draftPics]);
+    if (activities.length === 0) return;
+    speakText("Imprimiendo");
+    await exportScheduleToPDF("Mi Rutina", activities, [...pictograms, ...draftPics]);
   };
 
   const updateDraftPic = (index: number, updates: Partial<EasyDraftPic>) => {
@@ -145,12 +147,11 @@ export const EasyCreator: React.FC = () => {
 
   if (showSuccess) {
       return (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 animate-in zoom-in-95 duration-500 bg-white rounded-[60px] p-10 shadow-2xl border-4 border-green-50">
-              <div className="w-40 h-40 bg-green-100 text-green-500 rounded-full flex items-center justify-center shadow-inner">
-                  <Check size={80} strokeWidth={4} />
+          <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4 animate-in fade-in duration-300">
+              <div className="w-24 h-24 bg-green-500 text-white rounded-full flex items-center justify-center shadow-xl">
+                  <Check size={48} strokeWidth={4} />
               </div>
-              <h2 className="text-5xl font-black text-slate-800 text-center uppercase tracking-tighter">¡LISTO!</h2>
-              <p className="text-2xl font-bold text-slate-400">Tu agenda ha sido actualizada</p>
+              <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tighter">¡GUARDADO!</h2>
           </div>
       );
   }
@@ -167,25 +168,25 @@ export const EasyCreator: React.FC = () => {
         <div className="space-y-6 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
             <h2 className="text-4xl font-black text-slate-800 tracking-tight">¿Qué vamos a hacer?</h2>
-            <p className="text-slate-500 font-bold text-lg">Escribe lo que quieras hacer hoy</p>
+            <p className="text-slate-500 font-bold text-lg">Escribe tu plan para hoy</p>
           </div>
           
           <div className="bg-white p-6 rounded-[50px] shadow-2xl border-4 border-slate-100 ring-8 ring-slate-50">
             <textarea 
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Ej: Desayuno y luego ir al parque..."
-              className="w-full h-48 text-3xl font-bold p-4 bg-slate-50 border-none rounded-3xl resize-none outline-none text-slate-700 placeholder:text-slate-200"
+              placeholder="Ej: Desayuno y parque..."
+              className="w-full h-40 text-3xl font-bold p-4 bg-slate-50 border-none rounded-3xl resize-none outline-none text-slate-700 placeholder:text-slate-200"
             />
           </div>
 
           <button 
             onClick={handleTranslate}
             disabled={loading || !inputText.trim()}
-            className="w-full py-12 bg-brand-primary text-white rounded-[50px] shadow-2xl flex flex-col items-center justify-center gap-4 active:scale-95 transition-all hover:bg-brand-secondary border-b-[10px] border-brand-secondary"
+            className="w-full py-10 bg-brand-primary text-white rounded-[50px] shadow-2xl flex flex-col items-center justify-center gap-3 active:scale-95 transition-all hover:bg-brand-secondary border-b-8 border-brand-secondary"
           >
-            {loading ? <Loader2 className="animate-spin" size={70} /> : <Sparkles size={70} />}
-            <span className="text-4xl font-black uppercase tracking-wide">BUSCAR DIBUJOS</span>
+            {loading ? <Loader2 className="animate-spin" size={60} /> : <Sparkles size={60} />}
+            <span className="text-3xl font-black uppercase">BUSCAR DIBUJOS</span>
           </button>
         </div>
       )}
@@ -194,52 +195,47 @@ export const EasyCreator: React.FC = () => {
         <div className="space-y-8 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
             <h2 className="text-4xl font-black text-slate-800">¿Cuándo lo harás?</h2>
-            <p className="text-slate-500 font-bold text-lg">Revisa los dibujos y la hora</p>
+            <p className="text-slate-500 font-bold text-lg">Revisa tus dibujos</p>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
             {draftPics.map((p, i) => (
-              <div key={i} className="bg-white p-6 rounded-[40px] border-4 border-indigo-50 shadow-lg flex items-center gap-6 group">
+              <div key={i} className="bg-white p-6 rounded-[40px] border-4 border-indigo-50 shadow-lg flex items-center gap-6">
                   <button 
-                    onClick={() => { setEditingIndex(i); speakText("Cambiando imagen"); }}
-                    className={`w-32 h-32 rounded-[35px] flex items-center justify-center border-4 relative shrink-0 active:scale-90 transition-transform overflow-hidden ${p.customImageUrl ? 'border-brand-primary' : 'bg-slate-50 border-indigo-100'}`}
+                    onClick={() => { setEditingIndex(i); }}
+                    className={`w-28 h-28 rounded-[35px] flex items-center justify-center border-4 relative shrink-0 active:scale-90 transition-transform overflow-hidden ${p.customImageUrl ? 'border-brand-primary' : 'bg-slate-50 border-indigo-100'}`}
                   >
                     {p.customImageUrl ? (
-                        <img src={p.customImageUrl} className="w-full h-full object-cover" alt={p.label} />
+                        <img src={p.customImageUrl} className="w-full h-full object-cover" alt="" />
                     ) : (
-                        <img src={getArasaacImageUrl(p.arasaacId!)} className="w-full h-full object-contain p-4" alt={p.label} />
+                        <img src={getArasaacImageUrl(p.arasaacId!)} className="w-full h-full object-contain p-4" alt="" />
                     )}
-                    <div className="absolute -top-3 -right-3 bg-brand-primary text-white p-3 rounded-full shadow-lg border-4 border-white">
-                        <Pencil size={20} />
+                    <div className="absolute -top-2 -right-2 bg-brand-primary text-white p-2 rounded-full shadow-lg border-2 border-white">
+                        <Pencil size={16} />
                     </div>
                   </button>
                   
-                  <div className="flex-1 space-y-4 min-w-0">
-                      <div className="flex flex-col">
-                          <label className="text-[10px] font-black uppercase text-slate-400 mb-1">Actividad</label>
-                          <input 
-                            type="text" 
-                            value={p.label}
-                            onChange={(e) => updateDraftPic(i, { label: e.target.value.toUpperCase() })}
-                            className="text-2xl font-black text-slate-800 bg-slate-50 px-4 py-2 rounded-2xl border-2 border-transparent focus:border-brand-primary outline-none truncate"
-                          />
-                      </div>
-                      <div className="flex items-center gap-3">
-                          <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600">
-                              <Clock size={24} />
-                          </div>
+                  <div className="flex-1 space-y-3 min-w-0">
+                      <input 
+                        type="text" 
+                        value={p.label}
+                        onChange={(e) => updateDraftPic(i, { label: e.target.value.toUpperCase() })}
+                        className="text-xl font-black text-slate-800 bg-slate-50 px-4 py-2 rounded-2xl border-none outline-none w-full truncate"
+                      />
+                      <div className="flex items-center gap-2">
+                          <Clock size={20} className="text-indigo-400" />
                           <input 
                             type="time" 
                             value={p.time} 
                             onChange={(e) => updateDraftPic(i, { time: e.target.value })}
-                            className="text-3xl font-black text-indigo-700 bg-transparent outline-none w-full"
+                            className="text-2xl font-black text-indigo-700 bg-transparent outline-none"
                           />
                       </div>
                   </div>
 
                   <button 
                     onClick={() => setDraftPics(prev => prev.filter((_, idx) => idx !== i))}
-                    className="p-4 text-red-200 hover:text-red-500 transition-colors"
+                    className="p-3 text-red-200 hover:text-red-500 transition-colors"
                   >
                       <Trash2 size={24} />
                   </button>
@@ -254,26 +250,23 @@ export const EasyCreator: React.FC = () => {
             </button>
           </div>
 
-          <div className="space-y-4">
-              <label className="text-sm font-black text-slate-400 uppercase tracking-widest block text-center">Momento del día</label>
-              <div className="grid grid-cols-3 gap-4">
-                {(['morning', 'afternoon', 'evening'] as TimePeriod[]).map(p => (
-                  <button 
-                    key={p}
-                    onClick={() => { setSelectedPeriod(p); speakText(p === 'morning' ? "Mañana" : p === 'afternoon' ? "Tarde" : "Noche"); }}
-                    className={`py-12 rounded-[45px] border-4 flex flex-col items-center gap-2 transition-all ${selectedPeriod === p ? 'bg-brand-primary text-white border-brand-primary shadow-xl scale-105' : 'bg-white text-slate-400 border-slate-100'}`}
-                  >
-                    {p === 'morning' ? <Sun size={50} /> : p === 'afternoon' ? <Sunset size={50} /> : <Moon size={50} />}
-                    <span className="text-xl font-black uppercase">{p === 'morning' ? 'Mañana' : p === 'afternoon' ? 'Tarde' : 'Noche'}</span>
-                  </button>
-                ))}
-              </div>
+          <div className="grid grid-cols-3 gap-3">
+            {(['morning', 'afternoon', 'evening'] as TimePeriod[]).map(p => (
+              <button 
+                key={p}
+                onClick={() => setSelectedPeriod(p)}
+                className={`py-8 rounded-[40px] border-4 flex flex-col items-center gap-1 transition-all ${selectedPeriod === p ? 'bg-brand-primary text-white border-brand-primary shadow-xl scale-105' : 'bg-white text-slate-400 border-slate-100'}`}
+              >
+                {p === 'morning' ? <Sun size={32} /> : p === 'afternoon' ? <Sunset size={32} /> : <Moon size={32} />}
+                <span className="text-xs font-black uppercase">{p === 'morning' ? 'Mañana' : p === 'afternoon' ? 'Tarde' : 'Noche'}</span>
+              </button>
+            ))}
           </div>
 
           <div className="flex gap-4 pt-4">
-            <button onClick={() => setStep(1)} className="flex-1 py-8 bg-slate-100 text-slate-500 rounded-[40px] font-black text-2xl active:scale-95 transition-all">VOLVER</button>
-            <button onClick={() => { setStep(3); speakText("Elige el día"); }} className="flex-[2] py-8 bg-brand-primary text-white rounded-[40px] font-black text-2xl shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3">
-                CONTINUAR <ChevronRight size={32} />
+            <button onClick={() => setStep(1)} className="flex-1 py-6 bg-slate-100 text-slate-500 rounded-[35px] font-black text-lg active:scale-95 transition-all">VOLVER</button>
+            <button onClick={() => { setStep(3); }} className="flex-[2] py-6 bg-brand-primary text-white rounded-[35px] font-black text-lg shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                CONTINUAR <ChevronRight size={24} />
             </button>
           </div>
         </div>
@@ -282,66 +275,60 @@ export const EasyCreator: React.FC = () => {
       {step === 3 && (
         <div className="space-y-8 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
-            <h2 className="text-4xl font-black text-slate-800">¿Qué día lo haremos?</h2>
-            <p className="text-slate-500 font-bold text-lg">Toca un día de la lista</p>
+            <h2 className="text-4xl font-black text-slate-800">¿Qué día?</h2>
+            <p className="text-slate-500 font-bold text-lg">Selecciona la fecha</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-2">
             {quickDates.map(date => {
               const key = getDateKey(date);
               const isSelected = selectedDay === key;
               return (
                 <button 
                   key={key}
-                  onClick={() => { setSelectedDay(key); speakText(getDayLabel(key)); }}
-                  className={`py-10 rounded-[40px] border-4 flex flex-col items-center gap-1 transition-all ${isSelected ? 'bg-brand-primary text-white border-brand-primary shadow-2xl scale-105' : 'bg-white text-slate-400 border-slate-100'}`}
+                  onClick={() => setSelectedDay(key)}
+                  className={`py-6 rounded-[30px] border-4 flex flex-col items-center transition-all ${isSelected ? 'bg-brand-primary text-white border-brand-primary shadow-lg scale-105' : 'bg-white text-slate-400 border-slate-100'}`}
                 >
-                  <span className="text-sm font-black uppercase">{spanishDays[date.getDay()]}</span>
-                  <span className="text-4xl font-black">{date.getDate()}</span>
+                  <span className="text-[10px] font-black uppercase">{spanishDays[date.getDay()]}</span>
+                  <span className="text-2xl font-black">{date.getDate()}</span>
                 </button>
               );
             })}
           </div>
 
-          <div className="bg-white p-8 rounded-[50px] border-4 border-indigo-50 shadow-xl space-y-4">
-              <label className="flex items-center gap-3 text-slate-500 font-black uppercase text-sm tracking-widest justify-center">
-                  <CalendarIcon size={20} /> Elegir otra fecha:
+          <div className="bg-white p-6 rounded-[40px] border-4 border-indigo-50 shadow-xl flex flex-col items-center gap-3">
+              <label className="text-slate-400 font-black uppercase text-xs tracking-widest flex items-center gap-2">
+                  <CalendarIcon size={16} /> O elige otra fecha
               </label>
               <input 
                   type="date"
                   min={todayKey}
                   value={selectedDay}
-                  onChange={(e) => { 
-                      setSelectedDay(e.target.value); 
-                      speakText("Cambiado");
-                  }}
-                  className="w-full p-8 bg-slate-50 border-4 border-slate-100 rounded-[35px] text-4xl font-black text-center text-slate-700 outline-none focus:border-brand-primary transition-all cursor-pointer"
+                  onChange={(e) => setSelectedDay(e.target.value)}
+                  className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-2xl font-black text-center text-slate-700 outline-none focus:border-brand-primary"
               />
           </div>
 
-          <div className="space-y-4 pt-10">
+          <div className="space-y-4 pt-4">
             <button 
               onClick={handleFinish}
-              className="w-full py-10 bg-green-500 text-white rounded-[60px] shadow-2xl flex items-center justify-center gap-6 active:scale-95 transition-all hover:bg-green-600 border-b-[10px] border-green-700 overflow-hidden"
+              className="w-full h-24 bg-green-500 text-white rounded-[45px] shadow-2xl flex items-center justify-center active:scale-95 transition-all hover:bg-green-600 border-b-8 border-green-700"
             >
-              <div className="bg-white/20 p-4 rounded-full flex items-center justify-center shrink-0">
-                  <Check size={48} strokeWidth={4} />
-              </div>
-              <span className="text-3xl sm:text-5xl font-black uppercase tracking-tighter text-center leading-none">
+              <span className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-center w-full">
                 GUARDAR TODO
               </span>
             </button>
 
             <button 
               onClick={handleExportToday}
-              className="w-full py-8 bg-white text-brand-primary border-4 border-brand-primary/20 rounded-[50px] flex items-center justify-center gap-4 font-black text-2xl hover:bg-brand-primary/5 transition-all"
+              className="w-full py-6 bg-white text-brand-primary border-4 border-brand-primary/20 rounded-[40px] flex items-center justify-center gap-3 font-black text-xl hover:bg-brand-primary/5 transition-all"
             >
-              <Printer size={32} /> IMPRIMIR EN PAPEL
+              <Printer size={28} /> IMPRIMIR
             </button>
           </div>
 
-          <button onClick={() => setStep(2)} className="w-full py-6 text-slate-400 font-black uppercase text-sm tracking-[0.4em] hover:text-slate-600 active:scale-90 transition-all">
-              Volver a editar dibujos
+          <button onClick={() => setStep(2)} className="w-full py-4 text-slate-400 font-black uppercase text-[10px] tracking-[0.3em] hover:text-slate-600 transition-all">
+              Volver a editar
           </button>
         </div>
       )}
@@ -355,7 +342,6 @@ export const EasyCreator: React.FC = () => {
                     customImageUrl: newPic.customImageUrl 
                 });
                 setEditingIndex(null);
-                speakText("Imagen cambiada");
             }} 
             onClose={() => setEditingIndex(null)} 
           />

@@ -2,11 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { PersonOrPlace } from '../types';
 import { X, Upload, Image as ImageIcon } from 'lucide-react';
 
+// Added missing Props interface definition
 interface Props {
   initialData?: PersonOrPlace;
   onSave: (data: PersonOrPlace) => void;
   onClose: () => void;
 }
+
+// Generador de ID robusto local
+const generateSafeId = () => Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
 
 // Helper to compress image
 const compressImage = (file: File): Promise<string> => {
@@ -18,8 +22,8 @@ const compressImage = (file: File): Promise<string> => {
       img.src = event.target?.result as string;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 500; // Resize to max 500px width
-        const MAX_HEIGHT = 500; // Resize to max 500px height
+        const MAX_WIDTH = 500;
+        const MAX_HEIGHT = 500;
         let width = img.width;
         let height = img.height;
 
@@ -43,7 +47,6 @@ const compressImage = (file: File): Promise<string> => {
             return;
         }
         ctx.drawImage(img, 0, 0, width, height);
-        // Return compressed JPEG at 70% quality
         resolve(canvas.toDataURL('image/jpeg', 0.7));
       };
       img.onerror = (error) => reject(error);
@@ -68,7 +71,6 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
         setType(initialData.type);
         setImageUrl(initialData.imageUrl);
     } else {
-        // Reset for new entry
         setName('');
         setDescription('');
         setType('PERSON');
@@ -85,7 +87,7 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
           setImageUrl(compressed);
       } catch (error) {
           console.error("Error compressing image:", error);
-          alert("Hubo un error al procesar la imagen. Intenta con una imagen más pequeña.");
+          alert("Error al procesar la imagen.");
       } finally {
           setIsProcessing(false);
       }
@@ -95,11 +97,10 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
   const handleSave = () => {
     if (!name) return;
     
-    // Fallback image if none selected
     const finalImage = imageUrl || `https://ui-avatars.com/api/?name=${name}&background=random`;
 
     const newData: PersonOrPlace = {
-      id: initialData?.id || crypto.randomUUID(),
+      id: initialData?.id || generateSafeId(),
       name,
       description,
       type,
@@ -121,7 +122,6 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
         </div>
 
         <div className="space-y-4">
-            {/* Type Selector */}
             <div className="flex bg-slate-100 p-1 rounded-lg">
                 <button 
                     onClick={() => setType('PERSON')}
@@ -143,65 +143,36 @@ export const PersonPlaceEditModal: React.FC<Props> = ({ initialData, onSave, onC
                     type="text" 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Ej: Mamá, Escuela, Parque..."
-                    className="w-full p-3 bg-white text-slate-900 border rounded-xl focus:ring-2 focus:ring-brand-primary outline-none"
+                    placeholder="Ej: Mamá, Escuela..."
+                    className="w-full p-3 bg-white text-slate-900 border rounded-xl outline-none"
                 />
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Descripción (Opcional)</label>
-                <input 
-                    type="text" 
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Ej: Maestra de matemáticas"
-                    className="w-full p-3 bg-white text-slate-900 border rounded-xl focus:ring-2 focus:ring-brand-primary outline-none"
-                />
-            </div>
-
-            <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Imagen / Foto</label>
-                
-                <div className="flex gap-4 items-start">
-                    <div className="w-24 h-24 bg-slate-100 rounded-xl overflow-hidden border-2 border-dashed border-slate-300 flex items-center justify-center relative shrink-0">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Imagen</label>
+                <div className="flex gap-4 items-center">
+                    <div className="w-20 h-20 bg-slate-100 rounded-xl overflow-hidden border-2 border-dashed border-slate-300 flex items-center justify-center shrink-0">
                         {imageUrl ? (
                             <img src={imageUrl} alt="Preview" className="w-full h-full object-cover" />
                         ) : (
                             <ImageIcon className="text-slate-400" />
                         )}
                     </div>
-                    
-                    <div className="flex-1 space-y-2">
-                        <button 
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={isProcessing}
-                            className="w-full py-2 bg-blue-50 text-brand-primary font-bold rounded-lg border border-blue-200 flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors disabled:opacity-50"
-                        >
-                            <Upload size={18} /> {isProcessing ? 'Procesando...' : 'Subir Foto'}
-                        </button>
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleFileChange} 
-                            onClick={(e) => { (e.target as HTMLInputElement).value = '' }} // Reset to allow re-selecting same file
-                            accept="image/*" 
-                            className="hidden" 
-                        />
-                        <p className="text-xs text-slate-500">
-                            La imagen se optimizará automáticamente para ahorrar espacio.
-                        </p>
-                    </div>
+                    <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isProcessing}
+                        className="flex-1 py-2 bg-blue-50 text-brand-primary font-bold rounded-lg border border-blue-200"
+                    >
+                        {isProcessing ? 'Cargando...' : 'Subir Foto'}
+                    </button>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
                 </div>
             </div>
         </div>
 
         <div className="pt-2 flex justify-end gap-2">
-            <button onClick={onClose} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg">Cancelar</button>
-            <button 
-                onClick={handleSave} 
-                disabled={!name || isProcessing}
-                className="px-6 py-2 bg-brand-primary text-white font-bold rounded-lg shadow hover:bg-brand-secondary disabled:opacity-50"
-            >
+            <button onClick={onClose} className="px-4 py-2 text-slate-600 font-medium">Cancelar</button>
+            <button onClick={handleSave} disabled={!name || isProcessing} className="px-6 py-2 bg-brand-primary text-white font-bold rounded-lg shadow">
                 Guardar
             </button>
         </div>
