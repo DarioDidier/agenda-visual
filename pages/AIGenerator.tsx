@@ -32,22 +32,17 @@ export const AIGenerator: React.FC = () => {
 
   const todayKey = getLocalDateKey();
   const aistudio = (window as any).aistudio;
-
-  // Filtrar fechas para mostrar solo hoy y futuro
   const futureDates = weekDates.filter(date => getLocalDateKey(date) >= todayKey);
 
   const handleTranslate = async () => {
     if (!inputText.trim() || loading) return;
-
     if (aistudio) {
         const hasKey = await aistudio.hasSelectedApiKey();
         if (!hasKey) await aistudio.openSelectKey();
     }
-
     setLoading(true);
     try {
       const keywords = await translateTextToKeywords(inputText);
-      
       const pics = await Promise.all(keywords.map(async (kw) => {
           const results = await searchArasaac(kw);
           if (results && results.length > 0) {
@@ -62,73 +57,28 @@ export const AIGenerator: React.FC = () => {
           }
           return null;
       }));
-
       setTranslatedPics(pics.filter(p => p !== null) as EditablePic[]);
     } catch (e) {
-      console.error(e);
-      alert("No se pudo realizar la traducción.");
+      alert("Error en la traducción.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClear = () => {
-    setInputText('');
-    setTranslatedPics([]);
-  };
-
-  const updatePicTime = (index: number, time: string) => {
-      const newList = [...translatedPics];
-      newList[index] = { ...newList[index], time };
-      setTranslatedPics(newList);
-  };
-
-  const removePic = (index: number) => {
-      setTranslatedPics(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleUpdatePictogram = (newPic: PictogramData) => {
-      if (editingIndex === null) return;
-      const newList = [...translatedPics];
-      newList[editingIndex] = { 
-          ...newList[editingIndex], 
-          arasaacId: newPic.arasaacId, 
-          label: newPic.label,
-          iconName: newPic.iconName 
-      };
-      setTranslatedPics(newList);
-      setEditingIndex(null);
-  };
+  const handleClear = () => { setInputText(''); setTranslatedPics([]); };
 
   const handleAddToSchedule = () => {
     if (translatedPics.length === 0) return;
-
-    if (selectedDayKey < todayKey) {
-        alert("Por seguridad, solo puedes añadir actividades al día de hoy o fechas futuras.");
-        return;
-    }
-
     const newActivities: Activity[] = translatedPics.map((pic) => {
         addPictogram(pic);
-        return {
-            id: crypto.randomUUID(),
-            pictogramId: pic.id,
-            customLabel: pic.label,
-            time: pic.time,
-            period: selectedPeriod,
-            isDone: false
-        };
+        return { id: crypto.randomUUID(), pictogramId: pic.id, customLabel: pic.label, time: pic.time, period: selectedPeriod, isDone: false };
     });
-
     setSchedule(prev => {
-        const existing = prev[selectedDayKey] || [];
-        const combined = [...existing, ...newActivities];
-        // Ordenar por hora si hay horas definidas
+        const combined = [...(prev[selectedDayKey] || []), ...newActivities];
         combined.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
         return { ...prev, [selectedDayKey]: combined };
     });
-
-    alert("¡Pictogramas personalizados añadidos a tu agenda!");
+    alert("¡Rutina integrada con éxito!");
     handleClear();
   };
 
@@ -139,64 +89,58 @@ export const AIGenerator: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 pb-20">
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-full text-sm font-bold border border-indigo-200">
-            <Sparkles size={16} /> PictoTraductor Inteligente
+    <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-6 pb-20">
+      <div className="text-center space-y-4">
+        <div className="inline-flex items-center gap-3 bg-indigo-100 text-indigo-700 px-6 py-2 rounded-full text-sm font-black border border-indigo-200">
+            <Sparkles size={20} className="animate-pulse" /> PICTOTRADUCTOR INTELIGENTE
         </div>
-        <h2 className="text-3xl font-bold text-slate-800">Asistente AI</h2>
-        <p className="text-slate-500 max-w-lg mx-auto">Escribe una frase y personaliza cada pictograma antes de guardarlo en tu agenda.</p>
+        <h2 className="text-4xl font-black text-slate-800 tracking-tight">Asistente AI</h2>
+        <p className="text-slate-500 max-w-2xl mx-auto text-lg">Escribe frases naturales y deja que la inteligencia artificial encuentre la secuencia visual perfecta para tu agenda.</p>
       </div>
 
-      {/* Input Area */}
-      <div className="bg-white p-6 rounded-3xl shadow-xl border-2 border-slate-100 space-y-4">
+      <div className="bg-white p-8 rounded-[40px] shadow-2xl border-2 border-slate-100 space-y-6">
         <div className="relative">
             <textarea 
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Ej: 'Hoy quiero ir a la piscina a las cinco con papá'..."
-                className="w-full p-6 bg-slate-50 border-2 border-slate-100 rounded-2xl h-32 focus:border-brand-primary outline-none resize-none text-xl font-medium text-slate-700 placeholder:text-slate-300 transition-all"
+                placeholder="Ej: 'Mañana tengo fútbol a las seis después de la merienda'..."
+                className="w-full p-8 bg-slate-50 border-2 border-slate-100 rounded-[30px] h-48 focus:border-brand-primary outline-none resize-none text-2xl font-bold text-slate-700 placeholder:text-slate-300 transition-all shadow-inner"
             />
-            <div className="absolute bottom-4 right-4 flex gap-2">
-                <button onClick={handleClear} className="p-2 text-slate-400 hover:text-red-500 transition-colors" title="Limpiar">
-                    <Eraser size={24} />
+            <div className="absolute bottom-6 right-6 flex gap-4">
+                <button onClick={handleClear} className="p-4 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all" title="Limpiar">
+                    <Eraser size={28} />
                 </button>
                 <button 
                     onClick={handleTranslate}
                     disabled={loading || !inputText.trim()}
-                    className="bg-brand-primary text-white p-3 rounded-xl shadow-lg shadow-brand-primary/30 active:scale-95 transition-all disabled:opacity-50"
+                    className="bg-brand-primary text-white px-8 py-4 rounded-2xl shadow-xl shadow-brand-primary/30 active:scale-95 transition-all disabled:opacity-50 font-black flex items-center gap-3 text-lg"
                 >
                     {loading ? <Loader2 className="animate-spin" size={24} /> : <Send size={24} />}
+                    {loading ? 'Traduciendo...' : 'Convertir'}
                 </button>
             </div>
         </div>
       </div>
 
-      {/* Translation Result and Customization */}
       {translatedPics.length > 0 && (
-          <div className="space-y-6 animate-in zoom-in-95">
-              <div className="bg-white p-6 rounded-3xl border-2 border-indigo-100 shadow-xl">
-                  <h3 className="text-sm font-black text-indigo-900 uppercase mb-4 flex items-center gap-2">
-                      <Pencil size={14} /> Paso 1: Personaliza tu secuencia
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in zoom-in-95 duration-500">
+              <div className="xl:col-span-2 bg-white p-8 rounded-[40px] border-2 border-indigo-100 shadow-xl overflow-x-auto">
+                  <h3 className="text-xs font-black text-indigo-900 uppercase mb-8 tracking-widest flex items-center gap-2">
+                      <Pencil size={16} /> 1. Personaliza la secuencia
                   </h3>
-                  <div className="flex items-center gap-4 overflow-x-auto pb-4 px-2">
+                  <div className="flex items-center gap-8 min-w-max pb-6 px-2">
                       {translatedPics.map((pic, idx) => (
-                          <div key={pic.id} className="relative flex flex-col items-center gap-2 group min-w-[120px]">
-                              <div className="relative w-24 h-24 bg-slate-50 border-2 border-indigo-50 rounded-2xl flex items-center justify-center p-2 shadow-sm group-hover:border-brand-primary transition-all">
+                          <div key={pic.id} className="relative flex flex-col items-center gap-4 group">
+                              <div className="relative w-32 h-32 bg-slate-50 border-2 border-indigo-50 rounded-[28px] flex items-center justify-center p-4 shadow-sm group-hover:border-brand-primary group-hover:shadow-lg transition-all">
                                   <img src={getArasaacImageUrl(pic.arasaacId!)} alt={pic.label} className="w-full h-full object-contain" />
-                                  <button 
-                                    onClick={() => setEditingIndex(idx)}
-                                    className="absolute -top-2 -right-2 bg-white text-brand-primary p-1.5 rounded-full shadow-md border border-indigo-100 hover:bg-brand-primary hover:text-white transition-all"
-                                    title="Cambiar imagen"
-                                  >
-                                    <Pencil size={12} />
-                                  </button>
-                                  <button 
-                                    onClick={() => removePic(idx)}
-                                    className="absolute -bottom-2 -right-2 bg-white text-red-500 p-1.5 rounded-full shadow-md border border-red-100 hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover:opacity-100"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
+                                  <div className="absolute -top-3 -right-3 flex flex-col gap-2">
+                                      <button onClick={() => setEditingIndex(idx)} className="bg-white text-brand-primary p-2 rounded-xl shadow-lg border border-indigo-50 hover:bg-brand-primary hover:text-white transition-all">
+                                          <Pencil size={16} />
+                                      </button>
+                                      <button onClick={() => setTranslatedPics(prev => prev.filter((_, i) => i !== idx))} className="bg-white text-red-500 p-2 rounded-xl shadow-lg border border-red-50 hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover:opacity-100">
+                                          <Trash2 size={16} />
+                                      </button>
+                                  </div>
                               </div>
                               <input 
                                 type="text"
@@ -206,20 +150,19 @@ export const AIGenerator: React.FC = () => {
                                     newList[idx].label = e.target.value.toUpperCase();
                                     setTranslatedPics(newList);
                                 }}
-                                className="text-[10px] font-black text-center text-slate-600 uppercase w-full bg-transparent border-none outline-none focus:text-brand-primary"
+                                className="text-xs font-black text-center text-slate-600 uppercase w-full bg-transparent border-none outline-none focus:text-brand-primary tracking-tighter"
                               />
-                              <div className="flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">
-                                  <Clock size={10} className="text-indigo-400" />
-                                  <input 
-                                    type="time"
-                                    value={pic.time}
-                                    onChange={(e) => updatePicTime(idx, e.target.value)}
-                                    className="bg-transparent text-[10px] font-bold text-indigo-700 outline-none w-14"
-                                  />
+                              <div className="flex items-center gap-2 bg-indigo-50 px-3 py-2 rounded-xl border border-indigo-100">
+                                  <Clock size={14} className="text-indigo-400" />
+                                  <input type="time" value={pic.time} onChange={(e) => {
+                                      const newList = [...translatedPics];
+                                      newList[idx].time = e.target.value;
+                                      setTranslatedPics(newList);
+                                  }} className="bg-transparent text-xs font-black text-indigo-700 outline-none w-16" />
                               </div>
                               {idx < translatedPics.length - 1 && (
-                                  <div className="absolute -right-3 top-10 text-slate-200">
-                                      <ArrowRight size={14} />
+                                  <div className="absolute -right-5 top-14 text-slate-200">
+                                      <ArrowRight size={20} />
                                   </div>
                               )}
                           </div>
@@ -227,77 +170,76 @@ export const AIGenerator: React.FC = () => {
                   </div>
               </div>
 
-              {/* Integration Controls */}
-              <div className="bg-indigo-900 text-white p-8 rounded-3xl shadow-2xl space-y-6">
-                  <div className="flex items-center gap-3 border-b border-indigo-800 pb-4">
-                      <CheckCircle2 className="text-green-400" />
-                      <h3 className="text-xl font-bold">Paso 2: ¿Dónde quieres añadir esta frase?</h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-3">
-                          <label className="text-xs font-black uppercase text-indigo-300 flex items-center gap-2"><Calendar size={14} /> Seleccionar Día (Hoy o Futuro)</label>
-                          <div className="flex flex-wrap gap-2">
-                              {futureDates.map(date => {
-                                  const key = getLocalDateKey(date);
-                                  const isSelected = selectedDayKey === key;
-                                  const details = getDayDetails(key);
-                                  return (
-                                      <button 
-                                          key={key} 
-                                          onClick={() => setSelectedDayKey(key)}
-                                          className={`px-4 py-2 rounded-xl border-2 transition-all flex flex-col items-center min-w-[70px] ${isSelected ? 'border-white bg-white text-indigo-900 shadow-lg' : 'border-indigo-800 text-indigo-400 hover:border-indigo-600'}`}
-                                      >
-                                          <span className="text-[10px] font-black uppercase">{details.dayName.slice(0,3)}</span>
-                                          <span className="text-lg font-bold">{details.dayNum}</span>
-                                      </button>
-                                  );
-                              })}
-                          </div>
+              <div className="bg-slate-900 text-white p-8 rounded-[40px] shadow-2xl flex flex-col justify-between space-y-8">
+                  <div className="space-y-6">
+                      <div className="flex items-center gap-4 border-b border-white/10 pb-6">
+                          <CheckCircle2 className="text-green-400" size={32} />
+                          <h3 className="text-2xl font-black">2. Guardar</h3>
                       </div>
 
-                      <div className="space-y-3">
-                          <label className="text-xs font-black uppercase text-indigo-300 flex items-center gap-2"><Sunset size={14} /> Momento del Día</label>
-                          <div className="flex bg-indigo-950 p-1 rounded-2xl border border-indigo-800">
-                              {(['morning', 'afternoon', 'evening'] as TimePeriod[]).map(p => (
-                                  <button 
-                                      key={p}
-                                      onClick={() => setSelectedPeriod(p)}
-                                      className={`flex-1 py-3 rounded-xl flex flex-col items-center gap-1 transition-all ${selectedPeriod === p ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-500'}`}
-                                  >
-                                      {p === 'morning' ? <Sun size={18} /> : p === 'afternoon' ? <Sunset size={18} /> : <Moon size={18} />}
-                                      <span className="text-[10px] font-bold uppercase">{p === 'morning' ? 'Mañana' : p === 'afternoon' ? 'Tarde' : 'Noche'}</span>
-                                  </button>
-                              ))}
+                      <div className="space-y-6">
+                          <div>
+                              <label className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mb-3 block">Día de la agenda</label>
+                              <div className="grid grid-cols-3 gap-2">
+                                  {futureDates.map(date => {
+                                      const key = getLocalDateKey(date);
+                                      const isSelected = selectedDayKey === key;
+                                      const details = getDayDetails(key);
+                                      return (
+                                          <button 
+                                              key={key} 
+                                              onClick={() => setSelectedDayKey(key)}
+                                              className={`p-3 rounded-2xl border-2 transition-all flex flex-col items-center ${isSelected ? 'border-white bg-white text-slate-900 shadow-xl scale-105' : 'border-white/10 text-white/50 hover:border-white/30'}`}
+                                          >
+                                              <span className="text-[10px] font-black uppercase">{details.dayName.slice(0,3)}</span>
+                                              <span className="text-xl font-black">{details.dayNum}</span>
+                                          </button>
+                                      );
+                                  })}
+                              </div>
+                          </div>
+
+                          <div>
+                              <label className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mb-3 block">Momento</label>
+                              <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
+                                  {(['morning', 'afternoon', 'evening'] as TimePeriod[]).map(p => (
+                                      <button 
+                                          key={p}
+                                          onClick={() => setSelectedPeriod(p)}
+                                          className={`flex-1 py-4 rounded-xl flex flex-col items-center gap-2 transition-all ${selectedPeriod === p ? 'bg-white text-slate-900 shadow-lg' : 'text-white/40 hover:text-white/70'}`}
+                                      >
+                                          {p === 'morning' ? <Sun size={20} /> : p === 'afternoon' ? <Sunset size={20} /> : <Moon size={20} />}
+                                      </button>
+                                  ))}
+                              </div>
                           </div>
                       </div>
                   </div>
 
                   <button 
                       onClick={handleAddToSchedule}
-                      className="w-full py-5 bg-white text-indigo-900 rounded-2xl text-xl font-black flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all hover:bg-indigo-50"
+                      className="w-full py-6 bg-brand-primary text-white rounded-3xl text-xl font-black flex items-center justify-center gap-4 shadow-2xl active:scale-95 transition-all hover:bg-brand-secondary"
                   >
-                      Integrar en mi Agenda Visual <ArrowRight size={24} />
+                      Añadir a Agenda <ArrowRight size={28} />
                   </button>
               </div>
           </div>
       )}
 
-      {/* Help / Empty State */}
       {!translatedPics.length && !loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100 flex gap-4">
-                  <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl h-fit"><MessageSquareText /></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="bg-indigo-50/50 p-10 rounded-[40px] border border-indigo-100 flex gap-6 items-start">
+                  <div className="p-4 bg-white text-indigo-600 rounded-3xl shadow-sm"><MessageSquareText size={32} /></div>
                   <div>
-                      <h4 className="font-bold text-blue-900">Escribe con libertad</h4>
-                      <p className="text-sm text-blue-700 mt-1">La IA filtrará conectores y se quedará con los conceptos visuales clave para tu agenda.</p>
+                      <h4 className="text-xl font-black text-indigo-900">Lenguaje Natural</h4>
+                      <p className="text-indigo-700/70 mt-2 font-medium">Escribe como hablas. El motor AI ignora palabras vacías y se enfoca en acciones, personas y lugares visuales.</p>
                   </div>
               </div>
-              <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100 flex gap-4">
-                  <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl h-fit"><HelpCircle /></div>
+              <div className="bg-amber-50/50 p-10 rounded-[40px] border border-amber-100 flex gap-6 items-start">
+                  <div className="p-4 bg-white text-amber-600 rounded-3xl shadow-sm"><HelpCircle size={32} /></div>
                   <div>
-                      <h4 className="font-bold text-amber-900">Protección de Datos</h4>
-                      <p className="text-sm text-amber-700 mt-1">Solo puedes añadir frases a partir de hoy. Las rutinas pasadas se mantienen seguras como historial.</p>
+                      <h4 className="text-xl font-black text-amber-900">Seguridad Predictiva</h4>
+                      <p className="text-amber-700/70 mt-2 font-medium">Solo permite añadir rutinas a futuro para que los registros del pasado sirvan como historial inmutable.</p>
                   </div>
               </div>
           </div>
@@ -305,7 +247,12 @@ export const AIGenerator: React.FC = () => {
 
       {editingIndex !== null && (
           <PictogramSelectorModal 
-            onSelect={handleUpdatePictogram} 
+            onSelect={(newPic) => {
+                const newList = [...translatedPics];
+                newList[editingIndex] = { ...newList[editingIndex], arasaacId: newPic.arasaacId, label: newPic.label, iconName: newPic.iconName };
+                setTranslatedPics(newList);
+                setEditingIndex(null);
+            }} 
             onClose={() => setEditingIndex(null)} 
           />
       )}
