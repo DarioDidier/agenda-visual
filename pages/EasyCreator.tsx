@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight } from 'lucide-react';
+import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight, Trash2, Plus } from 'lucide-react';
 import { translateTextToKeywords } from '../services/geminiService';
 import { searchArasaac, getArasaacImageUrl } from '../services/arasaacService';
 import { Activity, PictogramData, Category, TimePeriod } from '../types';
@@ -34,7 +34,6 @@ export const EasyCreator: React.FC = () => {
 
   const todayKey = useMemo(() => getDateKey(new Date()), []);
   
-  // Generar los próximos 7 días para botones rápidos
   const quickDates = useMemo(() => {
     return Array.from({ length: 7 }).map((_, i) => {
         const d = new Date();
@@ -46,7 +45,7 @@ export const EasyCreator: React.FC = () => {
   const handleTranslate = async () => {
     if (!inputText.trim()) return;
     setLoading(true);
-    speakText("Buscando dibujos para tu rutina");
+    speakText("Buscando dibujos");
     try {
       const keywords = await translateTextToKeywords(inputText);
       const results = await Promise.all(keywords.map(async (kw) => {
@@ -68,10 +67,10 @@ export const EasyCreator: React.FC = () => {
       if (validPics.length > 0) {
           setStep(2);
       } else {
-          speakText("No encontré dibujos para eso. Intenta con otras palabras.");
+          speakText("No encontré dibujos. Intenta con otras palabras.");
       }
     } catch (e) {
-      speakText("Hubo un problema. Intenta de nuevo.");
+      speakText("Error al buscar.");
     } finally {
       setLoading(false);
     }
@@ -95,7 +94,7 @@ export const EasyCreator: React.FC = () => {
       [selectedDay]: [...(prev[selectedDay] || []), ...newActivities]
     }));
 
-    speakText("¡Guardado correctamente!");
+    speakText("¡Agenda guardada!");
     setStep(1);
     setInputText('');
     setDraftPics([]);
@@ -104,11 +103,11 @@ export const EasyCreator: React.FC = () => {
   const handleExportToday = async () => {
     const activities = draftPics.length > 0 ? draftPics.map(p => ({ pictogramId: p.id, customLabel: p.label } as Activity)) : [];
     if (activities.length === 0) {
-        speakText("Primero crea una rutina.");
+        speakText("No hay nada para imprimir.");
         return;
     }
-    speakText("Preparando para imprimir.");
-    await exportScheduleToPDF("Mi Rutina Nueva", activities, [...pictograms, ...draftPics]);
+    speakText("Preparando papel.");
+    await exportScheduleToPDF("Mi Nueva Rutina", activities, [...pictograms, ...draftPics]);
   };
 
   const updateDraftPic = (index: number, updates: Partial<EasyDraftPic>) => {
@@ -123,27 +122,27 @@ export const EasyCreator: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 pb-32">
-      {/* Indicador de pasos visual */}
+    <div className="max-w-2xl mx-auto space-y-8 pb-32 animate-in fade-in duration-500">
+      {/* Pasos visuales */}
       <div className="flex justify-between items-center px-4">
         {[1, 2, 3].map(i => (
-          <div key={i} className={`h-4 flex-1 mx-1 rounded-full transition-all duration-500 ${step >= i ? 'bg-brand-primary' : 'bg-slate-200'}`} />
+          <div key={i} className={`h-4 flex-1 mx-1 rounded-full transition-all duration-700 ${step >= i ? 'bg-brand-primary' : 'bg-slate-200'}`} />
         ))}
       </div>
 
-      {/* PASO 1: ENTRADA AI */}
+      {/* PASO 1: ¿QUÉ HAREMOS? */}
       {step === 1 && (
         <div className="space-y-6 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
             <h2 className="text-4xl font-black text-slate-800 tracking-tight">¿Qué vamos a hacer?</h2>
-            <p className="text-slate-500 font-bold text-lg">Escribe o usa el dictado de voz</p>
+            <p className="text-slate-500 font-bold text-lg">Escribe lo que quieras hacer hoy</p>
           </div>
           
-          <div className="bg-white p-6 rounded-[40px] shadow-2xl border-4 border-slate-100 ring-8 ring-slate-50">
+          <div className="bg-white p-6 rounded-[50px] shadow-2xl border-4 border-slate-100 ring-8 ring-slate-50">
             <textarea 
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Ej: Ir al médico y luego a la plaza..."
+              placeholder="Ej: Desayuno y luego ir al parque..."
               className="w-full h-48 text-3xl font-bold p-4 bg-slate-50 border-none rounded-3xl resize-none outline-none text-slate-700 placeholder:text-slate-200"
             />
           </div>
@@ -151,81 +150,108 @@ export const EasyCreator: React.FC = () => {
           <button 
             onClick={handleTranslate}
             disabled={loading || !inputText.trim()}
-            className="w-full py-10 bg-brand-primary text-white rounded-[40px] shadow-2xl flex flex-col items-center justify-center gap-3 active:scale-95 transition-all hover:bg-brand-secondary border-b-[8px] border-brand-secondary"
+            className="w-full py-12 bg-brand-primary text-white rounded-[50px] shadow-2xl flex flex-col items-center justify-center gap-4 active:scale-95 transition-all hover:bg-brand-secondary border-b-[10px] border-brand-secondary"
           >
-            {loading ? <Loader2 className="animate-spin" size={64} /> : <Sparkles size={64} />}
-            <span className="text-3xl font-black uppercase">BUSCAR DIBUJOS</span>
+            {loading ? <Loader2 className="animate-spin" size={70} /> : <Sparkles size={70} />}
+            <span className="text-4xl font-black uppercase tracking-wide">BUSCAR DIBUJOS</span>
           </button>
         </div>
       )}
 
-      {/* PASO 2: REVISIÓN Y MOMENTO */}
+      {/* PASO 2: ¿CUÁNDO LO HARÁS? (EDICIÓN) */}
       {step === 2 && (
         <div className="space-y-8 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
-            <h2 className="text-4xl font-black text-slate-800">¿Cómo lo haremos?</h2>
+            <h2 className="text-4xl font-black text-slate-800">¿Cuándo lo harás?</h2>
             <p className="text-slate-500 font-bold text-lg">Revisa los dibujos y la hora</p>
           </div>
 
-          <div className="flex gap-4 overflow-x-auto p-6 bg-white rounded-[40px] border-4 border-indigo-50 shadow-xl min-h-[220px] scrollbar-hide">
+          <div className="grid grid-cols-1 gap-4">
             {draftPics.map((p, i) => (
-              <div key={i} className="shrink-0 flex flex-col gap-3 items-center group relative">
+              <div key={i} className="bg-white p-6 rounded-[40px] border-4 border-indigo-50 shadow-lg flex items-center gap-6 group">
                   <button 
                     onClick={() => { setEditingIndex(i); speakText("Cambiando dibujo"); }}
-                    className="w-32 h-32 bg-slate-50 rounded-[32px] p-4 flex items-center justify-center border-4 border-indigo-100 shadow-sm group-hover:border-brand-primary group-hover:bg-white transition-all relative"
+                    className="w-32 h-32 bg-slate-50 rounded-[35px] p-4 flex items-center justify-center border-4 border-indigo-100 relative shrink-0 active:scale-90 transition-transform"
                   >
                     <img src={getArasaacImageUrl(p.arasaacId!)} className="w-full h-full object-contain" alt={p.label} />
                     <div className="absolute -top-3 -right-3 bg-brand-primary text-white p-3 rounded-full shadow-lg border-4 border-white">
                         <Pencil size={20} />
                     </div>
                   </button>
-                  <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-2xl border-2 border-slate-200">
-                      <Clock size={16} className="text-slate-400" />
-                      <input 
-                        type="time" 
-                        value={p.time} 
-                        onChange={(e) => updateDraftPic(i, { time: e.target.value })}
-                        className="bg-transparent text-lg font-black outline-none w-20 text-slate-700"
-                      />
+                  
+                  <div className="flex-1 space-y-4">
+                      <div className="flex flex-col">
+                          <label className="text-[10px] font-black uppercase text-slate-400 mb-1">Actividad</label>
+                          <input 
+                            type="text" 
+                            value={p.label}
+                            onChange={(e) => updateDraftPic(i, { label: e.target.value.toUpperCase() })}
+                            className="text-2xl font-black text-slate-800 bg-slate-50 px-4 py-2 rounded-2xl border-2 border-transparent focus:border-brand-primary outline-none"
+                          />
+                      </div>
+                      <div className="flex items-center gap-3">
+                          <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600">
+                              <Clock size={24} />
+                          </div>
+                          <input 
+                            type="time" 
+                            value={p.time} 
+                            onChange={(e) => updateDraftPic(i, { time: e.target.value })}
+                            className="text-3xl font-black text-indigo-700 bg-transparent outline-none w-full"
+                          />
+                      </div>
                   </div>
+
+                  <button 
+                    onClick={() => setDraftPics(prev => prev.filter((_, idx) => idx !== i))}
+                    className="p-4 text-red-200 hover:text-red-500 transition-colors"
+                  >
+                      <Trash2 size={24} />
+                  </button>
               </div>
             ))}
+            
+            <button 
+                onClick={() => setStep(1)}
+                className="w-full py-6 border-4 border-dashed border-slate-200 rounded-[40px] text-slate-400 flex items-center justify-center gap-2 font-black hover:bg-slate-50 transition-all"
+            >
+                <Plus size={24} /> AGREGAR MÁS
+            </button>
           </div>
 
           <div className="space-y-4">
-              <label className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] block text-center">Momento del día</label>
+              <label className="text-sm font-black text-slate-400 uppercase tracking-widest block text-center">Momento del día</label>
               <div className="grid grid-cols-3 gap-4">
                 {(['morning', 'afternoon', 'evening'] as TimePeriod[]).map(p => (
                   <button 
                     key={p}
                     onClick={() => { setSelectedPeriod(p); speakText(p === 'morning' ? "Mañana" : p === 'afternoon' ? "Tarde" : "Noche"); }}
-                    className={`py-10 rounded-[40px] border-4 flex flex-col items-center gap-2 transition-all ${selectedPeriod === p ? 'bg-brand-primary text-white border-brand-primary shadow-xl scale-105' : 'bg-white text-slate-400 border-slate-100'}`}
+                    className={`py-12 rounded-[45px] border-4 flex flex-col items-center gap-2 transition-all ${selectedPeriod === p ? 'bg-brand-primary text-white border-brand-primary shadow-xl scale-105' : 'bg-white text-slate-400 border-slate-100'}`}
                   >
-                    {p === 'morning' ? <Sun size={48} /> : p === 'afternoon' ? <Sunset size={48} /> : <Moon size={48} />}
+                    {p === 'morning' ? <Sun size={50} /> : p === 'afternoon' ? <Sunset size={50} /> : <Moon size={50} />}
                     <span className="text-xl font-black uppercase">{p === 'morning' ? 'Mañana' : p === 'afternoon' ? 'Tarde' : 'Noche'}</span>
                   </button>
                 ))}
               </div>
           </div>
 
-          <div className="flex gap-4">
-            <button onClick={() => setStep(1)} className="flex-1 py-8 bg-slate-100 text-slate-500 rounded-[40px] font-black text-2xl active:scale-95 transition-all">ATRÁS</button>
-            <button onClick={() => { setStep(3); speakText("Elige el día"); }} className="flex-[2] py-8 bg-brand-primary text-white rounded-[40px] font-black text-2xl shadow-xl shadow-brand-primary/20 active:scale-95 transition-all flex items-center justify-center gap-3">
-                SIGUIENTE <ChevronRight size={32} />
+          <div className="flex gap-4 pt-4">
+            <button onClick={() => setStep(1)} className="flex-1 py-8 bg-slate-100 text-slate-500 rounded-[40px] font-black text-2xl active:scale-95 transition-all">VOLVER</button>
+            <button onClick={() => { setStep(3); speakText("Elige el día"); }} className="flex-[2] py-8 bg-brand-primary text-white rounded-[40px] font-black text-2xl shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3">
+                CONTINUAR <ChevronRight size={32} />
             </button>
           </div>
         </div>
       )}
 
-      {/* PASO 3: DÍA Y FINALIZAR */}
+      {/* PASO 3: ¿QUÉ DÍA? */}
       {step === 3 && (
         <div className="space-y-8 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
             <h2 className="text-4xl font-black text-slate-800">¿Qué día lo haremos?</h2>
-            <p className="text-slate-500 font-bold text-lg">Toca un día o elige uno del calendario</p>
+            <p className="text-slate-500 font-bold text-lg">Toca un día de la lista</p>
           </div>
 
-          {/* Botones rápidos de la semana */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {quickDates.map(date => {
               const key = getDateKey(date);
@@ -234,7 +260,7 @@ export const EasyCreator: React.FC = () => {
                 <button 
                   key={key}
                   onClick={() => { setSelectedDay(key); speakText(getDayLabel(key)); }}
-                  className={`py-8 rounded-[35px] border-4 flex flex-col items-center gap-1 transition-all ${isSelected ? 'bg-brand-primary text-white border-brand-primary shadow-xl scale-105' : 'bg-white text-slate-400 border-slate-100'}`}
+                  className={`py-10 rounded-[40px] border-4 flex flex-col items-center gap-1 transition-all ${isSelected ? 'bg-brand-primary text-white border-brand-primary shadow-2xl scale-105' : 'bg-white text-slate-400 border-slate-100'}`}
                 >
                   <span className="text-sm font-black uppercase">{spanishDays[date.getDay()]}</span>
                   <span className="text-4xl font-black">{date.getDate()}</span>
@@ -243,10 +269,9 @@ export const EasyCreator: React.FC = () => {
             })}
           </div>
 
-          {/* Selector de calendario para cualquier día futuro */}
-          <div className="bg-white p-6 rounded-[40px] border-4 border-indigo-50 shadow-lg space-y-4">
+          <div className="bg-white p-8 rounded-[50px] border-4 border-indigo-50 shadow-xl space-y-4">
               <label className="flex items-center gap-3 text-slate-500 font-black uppercase text-sm tracking-widest justify-center">
-                  <CalendarIcon size={20} /> O elige otra fecha:
+                  <CalendarIcon size={20} /> Elegir otra fecha:
               </label>
               <input 
                   type="date"
@@ -254,33 +279,33 @@ export const EasyCreator: React.FC = () => {
                   value={selectedDay}
                   onChange={(e) => { 
                       setSelectedDay(e.target.value); 
-                      speakText("Día cambiado");
+                      speakText("Cambiado");
                   }}
-                  className="w-full p-6 bg-slate-50 border-4 border-slate-100 rounded-[30px] text-3xl font-black text-center text-slate-700 outline-none focus:border-brand-primary transition-all cursor-pointer"
+                  className="w-full p-8 bg-slate-50 border-4 border-slate-100 rounded-[35px] text-4xl font-black text-center text-slate-700 outline-none focus:border-brand-primary transition-all cursor-pointer"
               />
           </div>
 
-          <div className="space-y-4 pt-6">
+          <div className="space-y-4 pt-10">
             <button 
               onClick={handleFinish}
-              className="w-full py-12 bg-green-500 text-white rounded-[60px] shadow-2xl flex items-center justify-center gap-8 active:scale-95 transition-all hover:bg-green-600 border-b-[12px] border-green-700"
+              className="w-full py-14 bg-green-500 text-white rounded-[70px] shadow-2xl flex items-center justify-center gap-8 active:scale-95 transition-all hover:bg-green-600 border-b-[15px] border-green-700"
             >
-              <div className="bg-white/20 p-4 rounded-full shadow-inner">
-                  <Check size={56} strokeWidth={4} />
+              <div className="bg-white/20 p-5 rounded-full shadow-inner">
+                  <Check size={64} strokeWidth={5} />
               </div>
               <span className="text-5xl font-black uppercase tracking-tighter">GUARDAR TODO</span>
             </button>
 
             <button 
               onClick={handleExportToday}
-              className="w-full py-8 bg-white text-brand-primary border-4 border-brand-primary/20 rounded-[45px] flex items-center justify-center gap-4 font-black text-2xl hover:bg-brand-primary/5 transition-all"
+              className="w-full py-8 bg-white text-brand-primary border-4 border-brand-primary/20 rounded-[50px] flex items-center justify-center gap-4 font-black text-2xl hover:bg-brand-primary/5 transition-all"
             >
               <Printer size={32} /> IMPRIMIR EN PAPEL
             </button>
           </div>
 
-          <button onClick={() => setStep(2)} className="w-full py-6 text-slate-400 font-black uppercase text-sm tracking-[0.3em] hover:text-slate-600 active:scale-90 transition-all">
-              Volver a las fotos
+          <button onClick={() => setStep(2)} className="w-full py-6 text-slate-400 font-black uppercase text-sm tracking-[0.4em] hover:text-slate-600 active:scale-90 transition-all">
+              Volver a editar dibujos
           </button>
         </div>
       )}
@@ -290,7 +315,7 @@ export const EasyCreator: React.FC = () => {
             onSelect={(newPic) => {
                 updateDraftPic(editingIndex, { arasaacId: newPic.arasaacId, label: newPic.label });
                 setEditingIndex(null);
-                speakText("Dibujo cambiado");
+                speakText("Cambiado");
             }} 
             onClose={() => setEditingIndex(null)} 
           />
