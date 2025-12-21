@@ -270,7 +270,7 @@ export const ScheduleView: React.FC = () => {
                         onClick={confirmDeleteDay}
                         className="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-lg shadow-lg shadow-red-100 hover:bg-red-700 active:scale-95 transition-all"
                       >
-                          Borrrar Todo
+                          Borrar Todo
                       </button>
                       <button 
                         onClick={() => setDeleteModal(null)}

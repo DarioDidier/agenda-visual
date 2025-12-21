@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { PictogramData, Category } from '../types';
+import { PictogramData, Category, PersonOrPlace } from '../types';
 import { PictogramIcon } from './PictogramIcon';
 import { searchArasaac, getArasaacImageUrl } from '../services/arasaacService';
-import { X, Search, CloudDownload, Loader2, Image as ImageIcon, Users, LayoutGrid } from 'lucide-react';
+import { X, Search, CloudDownload, Loader2, Image as ImageIcon, Users, LayoutGrid, Plus } from 'lucide-react';
+import { PersonPlaceEditModal } from './PersonPlaceEditModal';
 
 interface Props {
   onSelect: (pic: PictogramData) => void;
@@ -12,14 +13,13 @@ interface Props {
 }
 
 export const PictogramSelectorModal: React.FC<Props> = ({ onSelect, onClose }) => {
-  const { pictograms, addPictogram, peoplePlaces } = useApp();
+  const { pictograms, addPictogram, peoplePlaces, addPersonOrPlace } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [search, setSearch] = useState('');
   const [arasaacResults, setArasaacResults] = useState<PictogramData[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchMode, setSearchMode] = useState<'LOCAL' | 'ARASAAC' | 'PEOPLE'>('LOCAL');
-
-  const categories = ['All', ...Object.values(Category)];
+  const [showAddPersonModal, setShowAddPersonModal] = useState(false);
 
   // Debounce search for Arasaac
   useEffect(() => {
@@ -60,7 +60,7 @@ export const PictogramSelectorModal: React.FC<Props> = ({ onSelect, onClose }) =
       onSelect(pic);
   };
 
-  const handlePersonSelect = (person: any) => {
+  const handlePersonSelect = (person: PersonOrPlace) => {
       const pic: PictogramData = {
           id: `person-${person.id}`,
           label: person.name.toUpperCase(),
@@ -69,6 +69,13 @@ export const PictogramSelectorModal: React.FC<Props> = ({ onSelect, onClose }) =
           bgColor: 'bg-white border-2 border-brand-primary'
       };
       onSelect(pic);
+  };
+
+  const handleSaveNewPerson = (person: PersonOrPlace) => {
+      addPersonOrPlace(person);
+      setShowAddPersonModal(false);
+      // Seleccionar automáticamente la nueva persona creada
+      handlePersonSelect(person);
   };
 
   return (
@@ -123,25 +130,29 @@ export const PictogramSelectorModal: React.FC<Props> = ({ onSelect, onClose }) =
                 {/* MODO FOTOS PERSONALES */}
                 {searchMode === 'PEOPLE' && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {peoplePlaces.length === 0 ? (
-                            <div className="col-span-full py-20 text-center space-y-4 opacity-40">
-                                <Users size={64} className="mx-auto" />
-                                <p className="font-black text-xl">Aún no tienes fotos guardadas.</p>
+                        {/* Botón para subir nueva foto directamente */}
+                        <button 
+                            onClick={() => setShowAddPersonModal(true)}
+                            className="flex flex-col items-center justify-center p-3 rounded-[30px] border-4 border-dashed border-slate-200 hover:border-brand-primary hover:bg-blue-50 transition-all bg-white shadow-sm aspect-square group"
+                        >
+                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-brand-primary group-hover:text-white transition-colors">
+                                <Plus size={32} />
                             </div>
-                        ) : (
-                            peoplePlaces.map(person => (
-                                <button 
-                                    key={person.id}
-                                    onClick={() => handlePersonSelect(person)}
-                                    className="flex flex-col items-center p-3 rounded-[30px] border-4 border-transparent hover:border-brand-primary hover:bg-blue-50 transition-all bg-white shadow-sm"
-                                >
-                                    <div className="w-full aspect-square rounded-[24px] overflow-hidden mb-3 border-2 border-slate-100">
-                                        <img src={person.imageUrl} alt={person.name} className="w-full h-full object-cover" />
-                                    </div>
-                                    <span className="text-sm font-black text-center uppercase truncate w-full px-2">{person.name}</span>
-                                </button>
-                            ))
-                        )}
+                            <span className="text-sm font-black text-center uppercase">Subir Foto</span>
+                        </button>
+
+                        {peoplePlaces.map(person => (
+                            <button 
+                                key={person.id}
+                                onClick={() => handlePersonSelect(person)}
+                                className="flex flex-col items-center p-3 rounded-[30px] border-4 border-transparent hover:border-brand-primary hover:bg-blue-50 transition-all bg-white shadow-sm"
+                            >
+                                <div className="w-full aspect-square rounded-[24px] overflow-hidden mb-3 border-2 border-slate-100">
+                                    <img src={person.imageUrl} alt={person.name} className="w-full h-full object-cover" />
+                                </div>
+                                <span className="text-sm font-black text-center uppercase truncate w-full px-2">{person.name}</span>
+                            </button>
+                        ))}
                     </div>
                 )}
 
@@ -195,6 +206,13 @@ export const PictogramSelectorModal: React.FC<Props> = ({ onSelect, onClose }) =
             </div>
         </div>
       </div>
+
+      {showAddPersonModal && (
+          <PersonPlaceEditModal 
+            onSave={handleSaveNewPerson}
+            onClose={() => setShowAddPersonModal(false)}
+          />
+      )}
     </div>
   );
 };
