@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserMode, Activity, PictogramData, TimePeriod } from '../types';
 import { PictogramCard } from '../components/PictogramCard';
-import { Plus, ChevronLeft, ChevronRight, Grid, List, Trash2, CalendarDays, FileText, Loader2, Sparkles, Book, Sun, Sunset, Moon, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Grid, List, Trash2, CalendarDays, FileText, Loader2, Sparkles, Book, Sun, Sunset, Moon, X, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
 import { RoutineLibraryModal } from '../components/RoutineLibraryModal';
@@ -21,7 +21,7 @@ const spanishMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'J
 
 export const ScheduleView: React.FC = () => {
   const { 
-    schedule, mode, pictograms, settings, deleteActivity, clearDayActivities,
+    schedule, mode, pictograms, clearDayActivities, deleteActivity,
     goToToday, changeWeek, weekDates 
   } = useApp();
   
@@ -37,6 +37,9 @@ export const ScheduleView: React.FC = () => {
   const [editingDateKey, setEditingDateKey] = useState<string | null>(null);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [generatingPdfFor, setGeneratingPdfFor] = useState<string | null>(null);
+
+  // Estados para el Modal de Confirmación de Borrado
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; dayKey: string; dayName: string } | null>(null);
 
   const currentChildDayDate = weekDates[selectedDayIndex];
   const currentChildDayKey = currentChildDayDate ? getDateKey(currentChildDayDate) : '';
@@ -56,18 +59,20 @@ export const ScheduleView: React.FC = () => {
   }, [mode]);
 
   const handleAddActivity = (dateKey: string) => {
-    if (dateKey < todayKey) {
-        announce("No se pueden agregar actividades a días pasados.");
-        return;
-    }
+    if (dateKey < todayKey) return;
     setEditingDateKey(dateKey);
     setIsSelectorOpen(true);
   };
 
-  const handleClearDay = (dayKey: string, dayName: string) => {
-      if (window.confirm(`¿Estás seguro de que quieres borrar TODA la rutina del ${dayName}? Esta acción no se puede deshacer.`)) {
-          clearDayActivities(dayKey);
-          announce(`Rutina del ${dayName} eliminada.`);
+  const handleOpenDeleteModal = (dayKey: string, dayName: string) => {
+      setDeleteModal({ isOpen: true, dayKey, dayName });
+  };
+
+  const confirmDeleteDay = () => {
+      if (deleteModal) {
+          clearDayActivities(deleteModal.dayKey);
+          announce(`Rutina del ${deleteModal.dayName} eliminada.`);
+          setDeleteModal(null);
       }
   };
 
@@ -91,7 +96,6 @@ export const ScheduleView: React.FC = () => {
   if (mode === UserMode.CHILD) {
     const displayDate = currentChildDayDate || new Date();
     const dayActivities = (schedule[currentChildDayKey] || []).filter(a => (a.period || 'morning') === childActivePeriod);
-    const progress = dayActivities.length > 0 ? Math.round((dayActivities.filter(a => a.isDone).length / dayActivities.length) * 100) : 0;
     
     return (
       <div className="flex flex-col h-full space-y-4 max-w-7xl mx-auto w-full">
@@ -100,7 +104,6 @@ export const ScheduleView: React.FC = () => {
                 onClick={() => setSelectedDayIndex(prev => Math.max(0, prev - 1))}
                 disabled={selectedDayIndex === 0}
                 className="p-4 bg-slate-50 rounded-2xl shadow-sm disabled:opacity-20 active:scale-90 transition-all"
-                aria-label="Ver día anterior"
             >
                 <ChevronLeft size={40} className="text-brand-primary" />
             </button>
@@ -114,13 +117,12 @@ export const ScheduleView: React.FC = () => {
                 onClick={() => setSelectedDayIndex(prev => Math.min(6, prev + 1))}
                 disabled={selectedDayIndex === 6}
                 className="p-4 bg-slate-50 rounded-2xl shadow-sm disabled:opacity-20 active:scale-90 transition-all"
-                aria-label="Ver día siguiente"
             >
                 <ChevronRight size={40} className="text-brand-primary" />
             </button>
         </div>
 
-        <nav className="flex p-2 bg-slate-200/50 rounded-3xl mx-2 gap-2" aria-label="Momentos del día">
+        <nav className="flex p-2 bg-slate-200/50 rounded-3xl mx-2 gap-2">
             {(['morning', 'afternoon', 'evening'] as TimePeriod[]).map((p) => {
                  const isActive = childActivePeriod === p;
                  return (
@@ -167,24 +169,24 @@ export const ScheduleView: React.FC = () => {
       <header className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
           <div className="flex items-center gap-6">
               <div className="flex items-center bg-slate-100 rounded-2xl p-1 shadow-inner">
-                <button onClick={() => changeWeek(-1)} className="p-3 hover:bg-white rounded-xl transition-all" title="Semana anterior">
+                <button onClick={() => changeWeek(-1)} className="p-3 hover:bg-white rounded-xl transition-all">
                     <ChevronLeft size={24} className="text-slate-600" />
                 </button>
-                <button onClick={goToToday} className="px-6 py-2 text-sm font-black text-slate-700 hover:text-brand-primary transition-colors">ESTA SEMANA</button>
-                <button onClick={() => changeWeek(1)} className="p-3 hover:bg-white rounded-xl transition-all" title="Semana siguiente">
+                <button onClick={goToToday} className="px-6 py-2 text-sm font-black text-slate-700 hover:text-brand-primary transition-colors uppercase">ESTA SEMANA</button>
+                <button onClick={() => changeWeek(1)} className="p-3 hover:bg-white rounded-xl transition-all">
                     <ChevronRight size={24} className="text-slate-600" />
                 </button>
               </div>
-              <h2 className="text-2xl font-black text-slate-800 border-l-4 border-brand-primary pl-4">
+              <h2 className="text-2xl font-black text-slate-800 border-l-4 border-brand-primary pl-4 uppercase">
                   {spanishMonths[weekDates[0].getMonth()]} {weekDates[0].getFullYear()}
               </h2>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
-               <Link to="/ai" className="bg-indigo-600 text-white px-6 py-3 rounded-2xl text-sm font-black flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95">
+               <Link to="/ai" className="bg-indigo-600 text-white px-6 py-3 rounded-2xl text-sm font-black flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
                    <Sparkles size={20} /> ASISTENTE AI
                </Link>
-               <button onClick={() => setIsLibraryOpen(true)} className="bg-slate-800 text-white px-6 py-3 rounded-2xl text-sm font-black flex items-center gap-2 hover:bg-slate-900 transition-all shadow-lg shadow-slate-100 active:scale-95">
+               <button onClick={() => setIsLibraryOpen(true)} className="bg-slate-800 text-white px-6 py-3 rounded-2xl text-sm font-black flex items-center gap-2 hover:bg-slate-900 transition-all shadow-lg active:scale-95">
                    <Book size={20} /> BIBLIOTECA
                </button>
                <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
@@ -214,14 +216,16 @@ export const ScheduleView: React.FC = () => {
                         <span className="text-xl font-black text-slate-800">{dateObj.getDate()}</span>
                     </div>
                     <div className="flex gap-1">
-                        <button 
-                            onClick={() => handleClearDay(dayKey, dayName)} 
-                            disabled={dayActivities.length === 0}
-                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all disabled:hidden" 
-                            title="Borrar rutina completa"
-                        >
-                            <Trash2 size={16} />
-                        </button>
+                        {/* Botón de borrar restringido a Hoy o Futuro */}
+                        {!isPast && dayActivities.length > 0 && (
+                            <button 
+                                onClick={() => handleOpenDeleteModal(dayKey, dayName)} 
+                                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" 
+                                title="Borrar rutina completa"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        )}
                         <button onClick={() => handleExportPDF(dayKey, dateObj)} className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Exportar PDF">
                             {generatingPdfFor === dayKey ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
                         </button>
@@ -252,6 +256,35 @@ export const ScheduleView: React.FC = () => {
             </section>
         )})}
       </div>
+
+      {/* MODAL DE CONFIRMACIÓN DE BORRADO */}
+      {deleteModal?.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true">
+              <div className="bg-white rounded-[32px] shadow-2xl p-8 max-w-sm w-full text-center border-4 border-red-50 animate-in zoom-in-95 duration-200">
+                  <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <AlertTriangle size={40} />
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800 mb-2">¿Borrar rutina?</h3>
+                  <p className="text-slate-500 mb-8 leading-relaxed">
+                      Estás a punto de borrar todas las actividades del <strong>{deleteModal.dayName}</strong>. Esta acción no se puede deshacer.
+                  </p>
+                  <div className="flex flex-col gap-3">
+                      <button 
+                        onClick={confirmDeleteDay}
+                        className="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-lg shadow-lg shadow-red-100 hover:bg-red-700 active:scale-95 transition-all"
+                      >
+                          Borrrar Todo
+                      </button>
+                      <button 
+                        onClick={() => setDeleteModal(null)}
+                        className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 active:scale-95 transition-all"
+                      >
+                          Cancelar
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {isLibraryOpen && <RoutineLibraryModal onClose={() => setIsLibraryOpen(false)} />}
       {isSelectorOpen && editingDateKey && (
