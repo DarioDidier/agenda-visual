@@ -56,11 +56,13 @@ export const AIGenerator: React.FC = () => {
   const handleGenerate = async () => {
     if (loading) return;
     
+    // Mitigación de carrera: Abrir selector si no hay clave pero continuar
     if (aistudio) {
         const hasKey = await aistudio.hasSelectedApiKey();
         if (!hasKey) {
             await aistudio.openSelectKey();
             setApiKeySelected(true);
+            // Continuamos sin detener el flujo
         }
     }
 
@@ -73,15 +75,14 @@ export const AIGenerator: React.FC = () => {
       
       const enhancedRoutine = await Promise.all(result.rutina.map(async (item: any) => {
         let arasaacId = undefined;
-        if (item.pictogramas || item.pictograma) {
-          const keyword = item.pictograma;
+        if (item.pictograma) {
           try {
-            const results = await searchArasaac(keyword);
+            const results = await searchArasaac(item.pictograma);
             if (results && results.length > 0) {
               arasaacId = results[0]._id;
             }
           } catch (e) {
-            console.warn("No pictograma:", keyword);
+            console.warn("No se encontró pictograma:", item.pictograma);
           }
         }
         return { ...item, arasaacId };
@@ -90,7 +91,7 @@ export const AIGenerator: React.FC = () => {
       setGeneratedData({ dia: result.dia, rutina: enhancedRoutine });
     } catch (e: any) {
       console.error("Error al generar:", e);
-      if (e.message?.includes('API key')) {
+      if (e.message?.includes('API key') || e.message?.includes('not found')) {
         setApiKeySelected(false);
         if (aistudio) await aistudio.openSelectKey();
       } else {
@@ -146,7 +147,7 @@ export const AIGenerator: React.FC = () => {
     
     setGeneratedData(null);
     setExtraInfo('');
-    alert(`¡Rutina para el día ${generatedData.dia} integrada con éxito!`);
+    alert(`¡Rutina para el ${generatedData.dia} aplicada con éxito!`);
   };
 
   const getDayDetails = (dateStr: string) => {
@@ -163,10 +164,10 @@ export const AIGenerator: React.FC = () => {
     <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 bg-brand-primary/10 text-brand-primary px-4 py-1.5 rounded-full text-sm font-bold border border-brand-primary/20">
-            <Sparkles size={16} /> Motor de IA Gratuito
+            <Sparkles size={16} /> Motor Inteligente Gratuito
         </div>
         <h2 className="text-3xl font-bold text-slate-800">Asistente Mágico de Rutinas</h2>
-        <p className="text-slate-500">Crea agendas visuales predecibles y adaptadas en segundos.</p>
+        <p className="text-slate-500">Genera agendas visuales claras y adaptadas en segundos.</p>
       </div>
 
       <div className="bg-white p-6 rounded-3xl shadow-xl border-2 border-slate-100 space-y-6">
@@ -201,12 +202,16 @@ export const AIGenerator: React.FC = () => {
 
         <div className="space-y-2">
             <label className="text-xs font-black uppercase text-slate-400 flex items-center gap-2"><MessageSquareQuote size={14} /> Detalles específicos</label>
-            <textarea value={extraInfo} onChange={(e) => setExtraInfo(e.target.value)} placeholder="Ej: Incluir lavarse las manos antes de comer..." className="w-full p-4 border rounded-2xl h-24 focus:border-brand-primary outline-none resize-none bg-slate-50 text-slate-800 text-sm" />
+            <textarea value={extraInfo} onChange={(e) => setExtraInfo(e.target.value)} placeholder="Ej: Incluir lavarse las manos antes de comer, evitar ruidos fuertes..." className="w-full p-4 border rounded-2xl h-24 focus:border-brand-primary outline-none resize-none bg-slate-50 text-slate-800 text-sm" />
         </div>
         
-        <button onClick={handleGenerate} disabled={loading} className="w-full bg-brand-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 disabled:opacity-50 shadow-lg shadow-brand-primary/20 active:scale-95 transition-all text-lg">
+        <button 
+          onClick={handleGenerate} 
+          disabled={loading} 
+          className="w-full bg-brand-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 disabled:opacity-50 shadow-lg shadow-brand-primary/20 active:scale-95 transition-all text-lg"
+        >
             {loading ? <Loader2 className="animate-spin" /> : <Wand2 size={20} />}
-            {loading ? 'Generando rutina visual...' : 'Crear Rutina Automáticamente'}
+            {loading ? 'Consultando al asistente...' : 'Crear Rutina Automáticamente'}
         </button>
       </div>
 
@@ -215,9 +220,9 @@ export const AIGenerator: React.FC = () => {
             <div className="flex items-center justify-between">
                 <div className="space-y-1">
                     <h3 className="font-bold text-indigo-900 flex items-center gap-2">
-                        <CheckCircle2 className="text-green-500" size={18} /> Rutina para el {generatedData.dia}
+                        <CheckCircle2 className="text-green-500" size={18} /> Sugerencia para el {generatedData.dia}
                     </h3>
-                    <p className="text-xs text-indigo-400">Revisa y pulsa en una actividad para cambiar su imagen</p>
+                    <p className="text-xs text-indigo-400">Toca un pictograma para cambiar su imagen si no te gusta.</p>
                 </div>
             </div>
             
@@ -264,7 +269,7 @@ export const AIGenerator: React.FC = () => {
                     })}
                 </div>
                 <button onClick={handleApply} className="w-full py-4 bg-indigo-600 text-white rounded-2xl text-lg font-black flex items-center justify-center gap-3 shadow-xl hover:bg-indigo-700 active:scale-95 transition-all">
-                    Confirmar e Integrar Rutina <ArrowRight size={20} />
+                    Integrar en mi Agenda Visual <ArrowRight size={20} />
                 </button>
             </div>
           </div>
