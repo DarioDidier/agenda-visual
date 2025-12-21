@@ -1,13 +1,16 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight, Trash2, Plus } from 'lucide-react';
+import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight, Trash2, Plus, PartyPopper } from 'lucide-react';
 import { translateTextToKeywords } from '../services/geminiService';
 import { searchArasaac, getArasaacImageUrl } from '../services/arasaacService';
 import { Activity, PictogramData, Category, TimePeriod } from '../types';
 import { speakText } from '../services/speechService';
 import { exportScheduleToPDF } from '../services/pdfService';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
+
+// Generador de ID seguro para evitar errores en navegadores que no soportan crypto.randomUUID
+const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 
 const getDateKey = (d: Date) => {
     const year = d.getFullYear();
@@ -31,6 +34,7 @@ export const EasyCreator: React.FC = () => {
   const [selectedDay, setSelectedDay] = useState(getDateKey(new Date()));
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('morning');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const todayKey = useMemo(() => getDateKey(new Date()), []);
   
@@ -49,17 +53,19 @@ export const EasyCreator: React.FC = () => {
     try {
       const keywords = await translateTextToKeywords(inputText);
       const results = await Promise.all(keywords.map(async (kw) => {
-        const res = await searchArasaac(kw);
-        if (res && res.length > 0) {
-          return {
-            id: `easy-${crypto.randomUUID()}`,
-            label: kw.toUpperCase(),
-            arasaacId: res[0]._id,
-            category: Category.HOME,
-            bgColor: 'bg-white',
-            time: selectedPeriod === 'morning' ? '09:00' : selectedPeriod === 'afternoon' ? '16:00' : '20:00'
-          } as EasyDraftPic;
-        }
+        try {
+            const res = await searchArasaac(kw);
+            if (res && res.length > 0) {
+              return {
+                id: `easy-${generateSafeId()}`,
+                label: kw.toUpperCase(),
+                arasaacId: res[0]._id,
+                category: Category.HOME,
+                bgColor: 'bg-white',
+                time: selectedPeriod === 'morning' ? '09:00' : selectedPeriod === 'afternoon' ? '16:00' : '20:00'
+              } as EasyDraftPic;
+            }
+        } catch (e) { console.error(e); }
         return null;
       }));
       const validPics = results.filter(p => p !== null) as EasyDraftPic[];
@@ -77,27 +83,43 @@ export const EasyCreator: React.FC = () => {
   };
 
   const handleFinish = () => {
-    const newActivities: Activity[] = draftPics.map(pic => {
-      addPictogram(pic);
-      return {
-        id: crypto.randomUUID(),
-        pictogramId: pic.id,
-        customLabel: pic.label,
-        period: selectedPeriod,
-        isDone: false,
-        time: pic.time
-      };
-    });
+    try {
+        if (draftPics.length === 0) return;
 
-    setSchedule(prev => ({
-      ...prev,
-      [selectedDay]: [...(prev[selectedDay] || []), ...newActivities]
-    }));
+        const newActivities: Activity[] = draftPics.map(pic => {
+          addPictogram(pic);
+          return {
+            id: generateSafeId(),
+            pictogramId: pic.id,
+            customLabel: pic.label,
+            period: selectedPeriod,
+            isDone: false,
+            time: pic.time || '00:00'
+          };
+        });
 
-    speakText("¡Agenda guardada!");
-    setStep(1);
-    setInputText('');
-    setDraftPics([]);
+        setSchedule(prev => {
+            const currentDayActivities = prev[selectedDay] || [];
+            return {
+                ...prev,
+                [selectedDay]: [...currentDayActivities, ...newActivities]
+            };
+        });
+
+        speakText("¡Agenda guardada con éxito!");
+        setShowSuccess(true);
+        
+        // Pequeña pausa para mostrar el éxito antes de resetear
+        setTimeout(() => {
+            setShowSuccess(false);
+            setStep(1);
+            setInputText('');
+            setDraftPics([]);
+        }, 2000);
+    } catch (error) {
+        console.error("Error al guardar:", error);
+        alert("Ocurrió un error al guardar. Por favor, intenta de nuevo.");
+    }
   };
 
   const handleExportToday = async () => {
@@ -120,6 +142,19 @@ export const EasyCreator: React.FC = () => {
       const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
       return `${spanishDays[d.getDay()]} ${d.getDate()}`;
   };
+
+  // Pantalla de éxito momentánea
+  if (showSuccess) {
+      return (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 animate-in zoom-in-95 duration-500">
+              <div className="w-40 h-40 bg-green-100 text-green-500 rounded-full flex items-center justify-center shadow-2xl border-8 border-green-50">
+                  <PartyPopper size={80} />
+              </div>
+              <h2 className="text-5xl font-black text-slate-800 text-center">¡GUARDADO!</h2>
+              <p className="text-2xl font-bold text-slate-400">Tu rutina está lista</p>
+          </div>
+      );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-32 animate-in fade-in duration-500">
