@@ -7,6 +7,8 @@ import { searchArasaac, getArasaacImageUrl } from '../services/arasaacService';
 import { Activity, PictogramData, Category, TimePeriod } from '../types';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
 
+const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+
 const getLocalDateKey = (d: Date = new Date()) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -47,7 +49,7 @@ export const AIGenerator: React.FC = () => {
           const results = await searchArasaac(kw);
           if (results && results.length > 0) {
               return {
-                  id: `ai-${crypto.randomUUID()}`,
+                  id: `ai-${generateSafeId()}`,
                   label: kw.toUpperCase(),
                   arasaacId: results[0]._id,
                   category: Category.HOME,
@@ -71,7 +73,7 @@ export const AIGenerator: React.FC = () => {
     if (translatedPics.length === 0) return;
     const newActivities: Activity[] = translatedPics.map((pic) => {
         addPictogram(pic);
-        return { id: crypto.randomUUID(), pictogramId: pic.id, customLabel: pic.label, time: pic.time, period: selectedPeriod, isDone: false };
+        return { id: generateSafeId(), pictogramId: pic.id, customLabel: pic.label, time: pic.time, period: selectedPeriod, isDone: false };
     });
     setSchedule(prev => {
         const combined = [...(prev[selectedDayKey] || []), ...newActivities];

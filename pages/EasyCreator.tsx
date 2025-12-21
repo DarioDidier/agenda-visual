@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight, Trash2, Plus, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight, Trash2, Plus } from 'lucide-react';
 import { translateTextToKeywords } from '../services/geminiService';
 import { searchArasaac, getArasaacImageUrl } from '../services/arasaacService';
 import { Activity, PictogramData, Category, TimePeriod } from '../types';
@@ -9,7 +9,7 @@ import { speakText } from '../services/speechService';
 import { exportScheduleToPDF } from '../services/pdfService';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
 
-// Generador de ID seguro local
+// Generador de ID seguro local (Evita el crash de crypto.randomUUID)
 const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 
 const getDateKey = (d: Date) => {
@@ -86,9 +86,8 @@ export const EasyCreator: React.FC = () => {
     try {
         if (draftPics.length === 0) return;
 
-        // 1. Preparar actividades
+        // 1. Preparar actividades con IDs seguros
         const newActivities: Activity[] = draftPics.map(pic => {
-          // Asegurar que el pictograma se registre en la librería global
           addPictogram(pic);
           return {
             id: generateSafeId(),
@@ -100,20 +99,15 @@ export const EasyCreator: React.FC = () => {
           };
         });
 
-        // 2. Actualizar agenda del día específico
+        // 2. Actualizar agenda
         setSchedule(prev => {
             const currentDayActivities = prev[selectedDay] || [];
             const updatedDay = [...currentDayActivities, ...newActivities];
-            // Ordenar por hora
             updatedDay.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
-            
-            return {
-                ...prev,
-                [selectedDay]: updatedDay
-            };
+            return { ...prev, [selectedDay]: updatedDay };
         });
 
-        speakText("¡Agenda guardada correctamente!");
+        speakText("Agenda guardada");
         setShowSuccess(true);
         
         setTimeout(() => {
@@ -124,7 +118,7 @@ export const EasyCreator: React.FC = () => {
         }, 2000);
     } catch (error) {
         console.error("Error al guardar:", error);
-        alert("Ocurrió un problema al guardar. Intenta de nuevo.");
+        alert("Ocurrió un problema al guardar. Por favor reintenta.");
     }
   };
 
@@ -151,12 +145,12 @@ export const EasyCreator: React.FC = () => {
 
   if (showSuccess) {
       return (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 animate-in zoom-in-95 duration-500">
-              <div className="w-40 h-40 bg-green-100 text-green-500 rounded-full flex items-center justify-center shadow-2xl border-8 border-green-50">
-                  <CheckCircle2 size={80} />
+          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 animate-in zoom-in-95 duration-500 bg-white rounded-[60px] p-10 shadow-2xl border-4 border-green-50">
+              <div className="w-40 h-40 bg-green-100 text-green-500 rounded-full flex items-center justify-center shadow-inner">
+                  <Check size={80} strokeWidth={4} />
               </div>
-              <h2 className="text-5xl font-black text-slate-800 text-center uppercase tracking-tighter">¡GUARDADO!</h2>
-              <p className="text-2xl font-bold text-slate-400">Tu rutina está lista</p>
+              <h2 className="text-5xl font-black text-slate-800 text-center uppercase tracking-tighter">¡LISTO!</h2>
+              <p className="text-2xl font-bold text-slate-400">Tu agenda ha sido actualizada</p>
           </div>
       );
   }
@@ -220,14 +214,14 @@ export const EasyCreator: React.FC = () => {
                     </div>
                   </button>
                   
-                  <div className="flex-1 space-y-4">
+                  <div className="flex-1 space-y-4 min-w-0">
                       <div className="flex flex-col">
                           <label className="text-[10px] font-black uppercase text-slate-400 mb-1">Actividad</label>
                           <input 
                             type="text" 
                             value={p.label}
                             onChange={(e) => updateDraftPic(i, { label: e.target.value.toUpperCase() })}
-                            className="text-2xl font-black text-slate-800 bg-slate-50 px-4 py-2 rounded-2xl border-2 border-transparent focus:border-brand-primary outline-none"
+                            className="text-2xl font-black text-slate-800 bg-slate-50 px-4 py-2 rounded-2xl border-2 border-transparent focus:border-brand-primary outline-none truncate"
                           />
                       </div>
                       <div className="flex items-center gap-3">
@@ -328,12 +322,14 @@ export const EasyCreator: React.FC = () => {
           <div className="space-y-4 pt-10">
             <button 
               onClick={handleFinish}
-              className="w-full py-14 bg-green-500 text-white rounded-[70px] shadow-2xl flex items-center justify-center gap-8 active:scale-95 transition-all hover:bg-green-600 border-b-[15px] border-green-700"
+              className="w-full py-10 bg-green-500 text-white rounded-[60px] shadow-2xl flex items-center justify-center gap-6 active:scale-95 transition-all hover:bg-green-600 border-b-[10px] border-green-700 overflow-hidden"
             >
-              <div className="bg-white/20 p-5 rounded-full shadow-inner">
-                  <Check size={64} strokeWidth={5} />
+              <div className="bg-white/20 p-4 rounded-full flex items-center justify-center shrink-0">
+                  <Check size={48} strokeWidth={4} />
               </div>
-              <span className="text-5xl font-black uppercase tracking-tighter">GUARDAR TODO</span>
+              <span className="text-3xl sm:text-5xl font-black uppercase tracking-tighter text-center leading-none">
+                GUARDAR TODO
+              </span>
             </button>
 
             <button 

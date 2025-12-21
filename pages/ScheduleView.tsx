@@ -9,6 +9,8 @@ import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
 import { RoutineLibraryModal } from '../components/RoutineLibraryModal';
 import { exportScheduleToPDF } from '../services/pdfService';
 
+const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+
 const getDateKey = (d: Date) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -38,7 +40,6 @@ export const ScheduleView: React.FC = () => {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [generatingPdfFor, setGeneratingPdfFor] = useState<string | null>(null);
 
-  // Estados para el Modal de Confirmación de Borrado
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; dayKey: string; dayName: string } | null>(null);
 
   const currentChildDayDate = weekDates[selectedDayIndex];
@@ -92,7 +93,6 @@ export const ScheduleView: React.FC = () => {
 
   const getPictogram = (id: string) => pictograms.find(p => p.id === id) || pictograms[0];
 
-  // --- MODO NIÑO ---
   if (mode === UserMode.CHILD) {
     const displayDate = currentChildDayDate || new Date();
     const dayActivities = (schedule[currentChildDayKey] || []).filter(a => (a.period || 'morning') === childActivePeriod);
@@ -163,7 +163,6 @@ export const ScheduleView: React.FC = () => {
     );
   }
 
-  // --- MODO ADULTO ---
   return (
     <div className="space-y-8 max-w-[1600px] mx-auto pb-20">
       <header className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
@@ -216,7 +215,6 @@ export const ScheduleView: React.FC = () => {
                         <span className="text-xl font-black text-slate-800">{dateObj.getDate()}</span>
                     </div>
                     <div className="flex gap-1">
-                        {/* Botón de borrar restringido a Hoy o Futuro */}
                         {!isPast && dayActivities.length > 0 && (
                             <button 
                                 onClick={() => handleOpenDeleteModal(dayKey, dayName)} 
@@ -257,10 +255,9 @@ export const ScheduleView: React.FC = () => {
         )})}
       </div>
 
-      {/* MODAL DE CONFIRMACIÓN DE BORRADO */}
       {deleteModal?.isOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" role="dialog" aria-modal="true">
-              <div className="bg-white rounded-[32px] shadow-2xl p-8 max-w-sm w-full text-center border-4 border-red-50 animate-in zoom-in-95 duration-200">
+              <div className="bg-white rounded-[32px] shadow-2xl p-8 max-sm w-full text-center border-4 border-red-50 animate-in zoom-in-95 duration-200">
                   <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
                       <AlertTriangle size={40} />
                   </div>
@@ -291,7 +288,7 @@ export const ScheduleView: React.FC = () => {
           <PictogramSelectorModal 
             onSelect={(pic) => {
                 const newActivity: Activity = {
-                    id: crypto.randomUUID(),
+                    id: generateSafeId(),
                     pictogramId: pic.id,
                     customLabel: pic.label,
                     time: "09:00",
