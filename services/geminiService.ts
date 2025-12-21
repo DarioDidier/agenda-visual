@@ -1,10 +1,12 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
 export const translateTextToKeywords = async (text: string): Promise<string[]> => {
   if (!text || text.trim().length < 2) return [];
 
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Inicialización siguiendo estrictamente las guías
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
     const model = 'gemini-3-flash-preview';
 
     const systemInstruction = `Eres un experto en comunicación aumentativa y alternativa (CAA).

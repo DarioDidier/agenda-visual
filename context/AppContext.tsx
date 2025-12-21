@@ -3,8 +3,22 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AppSettings, UserMode, WeekSchedule, PictogramData, PersonOrPlace, Activity, Reward, RewardSchedule, TimePeriod, SavedRoutine } from '../types';
 import { INITIAL_PICTOGRAMS, EMPTY_SCHEDULE } from '../constants';
 
-// Generador de ID seguro y compatible (fallback para crypto.randomUUID)
+// Generador de ID seguro y compatible
 const generateId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+
+// Helper para guardar en localStorage de forma segura
+const safeSave = (key: string, value: any) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+      console.warn("Límite de almacenamiento alcanzado. No se pudieron guardar todos los cambios.");
+      // Opcional: Podríamos emitir un evento o alerta aquí
+    } else {
+      console.error("Error guardando en localStorage:", e);
+    }
+  }
+};
 
 const getMonday = (d: Date) => {
   const date = new Date(d);
@@ -17,7 +31,7 @@ interface AppContextType {
   mode: UserMode;
   setMode: (mode: UserMode) => void;
   schedule: WeekSchedule;
-  setSchedule: (schedule: React.SetStateAction<WeekSchedule>) => void;
+  setSchedule: React.Dispatch<React.SetStateAction<WeekSchedule>>;
   pictograms: PictogramData[];
   addPictogram: (pic: PictogramData) => void;
   peoplePlaces: PersonOrPlace[];
@@ -96,13 +110,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // Efectos de persistencia seguros
   useEffect(() => { localStorage.setItem('mav_mode', mode); }, [mode]);
-  useEffect(() => { localStorage.setItem('mav_schedule', JSON.stringify(schedule)); }, [schedule]);
-  useEffect(() => { localStorage.setItem('mav_rewards', JSON.stringify(rewards)); }, [rewards]);
-  useEffect(() => { localStorage.setItem('mav_people', JSON.stringify(peoplePlaces)); }, [peoplePlaces]);
-  useEffect(() => { localStorage.setItem('mav_pictograms', JSON.stringify(pictograms)); }, [pictograms]);
-  useEffect(() => { localStorage.setItem('mav_settings', JSON.stringify(settings)); }, [settings]);
-  useEffect(() => { localStorage.setItem('mav_saved_routines', JSON.stringify(savedRoutines)); }, [savedRoutines]);
+  useEffect(() => { safeSave('mav_schedule', schedule); }, [schedule]);
+  useEffect(() => { safeSave('mav_rewards', rewards); }, [rewards]);
+  useEffect(() => { safeSave('mav_people', peoplePlaces); }, [peoplePlaces]);
+  useEffect(() => { safeSave('mav_pictograms', pictograms); }, [pictograms]);
+  useEffect(() => { safeSave('mav_settings', settings); }, [settings]);
+  useEffect(() => { safeSave('mav_saved_routines', savedRoutines); }, [savedRoutines]);
 
   const goToToday = () => setCurrentDate(new Date());
   const changeWeek = (weeks: number) => {

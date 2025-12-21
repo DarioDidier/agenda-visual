@@ -114,7 +114,7 @@ export const EasyCreator: React.FC = () => {
         speakText("Guardado");
         setShowSuccess(true);
         
-        // Reset controlado
+        // Reset controlado para evitar flickering o errores de estado
         setTimeout(() => {
             setShowSuccess(false);
             setStep(1);
@@ -123,7 +123,7 @@ export const EasyCreator: React.FC = () => {
         }, 1500);
     } catch (error) {
         console.error("Fatal save error:", error);
-        alert("Hubo un error al guardar. Intenta de nuevo.");
+        alert("Hubo un error al guardar. El almacenamiento del dispositivo podría estar lleno.");
     }
   };
 
@@ -312,9 +312,9 @@ export const EasyCreator: React.FC = () => {
           <div className="space-y-4 pt-4">
             <button 
               onClick={handleFinish}
-              className="w-full h-24 bg-green-500 text-white rounded-[45px] shadow-2xl flex items-center justify-center active:scale-95 transition-all hover:bg-green-600 border-b-8 border-green-700"
+              className="w-full h-24 bg-green-500 text-white rounded-[45px] shadow-2xl flex items-center justify-center active:scale-95 transition-all hover:bg-green-600 border-b-8 border-green-700 px-4"
             >
-              <span className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-center w-full">
+              <span className="text-xl sm:text-2xl font-black uppercase tracking-tight text-center w-full block">
                 GUARDAR TODO
               </span>
             </button>
