@@ -55,7 +55,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mode, setMode] = useState<UserMode>(() => {
     const saved = localStorage.getItem('mav_mode');
-    return (saved as UserMode) || UserMode.ADULT;
+    return (saved as UserMode) || UserMode.EASY_ADULT;
   });
   
   const [schedule, setSchedule] = useState<WeekSchedule>(() => {
