@@ -170,10 +170,14 @@ export const EasyCreator: React.FC = () => {
             {draftPics.map((p, i) => (
               <div key={i} className="bg-white p-6 rounded-[40px] border-4 border-indigo-50 shadow-lg flex items-center gap-6 group">
                   <button 
-                    onClick={() => { setEditingIndex(i); speakText("Cambiando dibujo"); }}
-                    className="w-32 h-32 bg-slate-50 rounded-[35px] p-4 flex items-center justify-center border-4 border-indigo-100 relative shrink-0 active:scale-90 transition-transform"
+                    onClick={() => { setEditingIndex(i); speakText("Cambiando imagen"); }}
+                    className={`w-32 h-32 rounded-[35px] flex items-center justify-center border-4 relative shrink-0 active:scale-90 transition-transform overflow-hidden ${p.customImageUrl ? 'border-brand-primary' : 'bg-slate-50 border-indigo-100'}`}
                   >
-                    <img src={getArasaacImageUrl(p.arasaacId!)} className="w-full h-full object-contain" alt={p.label} />
+                    {p.customImageUrl ? (
+                        <img src={p.customImageUrl} className="w-full h-full object-cover" alt={p.label} />
+                    ) : (
+                        <img src={getArasaacImageUrl(p.arasaacId!)} className="w-full h-full object-contain p-4" alt={p.label} />
+                    )}
                     <div className="absolute -top-3 -right-3 bg-brand-primary text-white p-3 rounded-full shadow-lg border-4 border-white">
                         <Pencil size={20} />
                     </div>
@@ -313,9 +317,13 @@ export const EasyCreator: React.FC = () => {
       {editingIndex !== null && (
           <PictogramSelectorModal 
             onSelect={(newPic) => {
-                updateDraftPic(editingIndex, { arasaacId: newPic.arasaacId, label: newPic.label });
+                updateDraftPic(editingIndex, { 
+                    arasaacId: newPic.arasaacId, 
+                    label: newPic.label, 
+                    customImageUrl: newPic.customImageUrl 
+                });
                 setEditingIndex(null);
-                speakText("Cambiado");
+                speakText("Imagen cambiada");
             }} 
             onClose={() => setEditingIndex(null)} 
           />
