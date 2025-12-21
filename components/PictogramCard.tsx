@@ -66,7 +66,7 @@ export const PictogramCard: React.FC<Props> = ({
 
   const renderImage = () => {
     // En alto contraste, si hay imagen, la mostramos pero con un fondo neutro para asegurar visibilidad
-    const imgWrapperClass = highContrast ? "bg-white rounded-lg p-1" : "";
+    const imgWrapperClass = highContrast ? (activity.isDone ? "bg-white/10 rounded-lg p-1" : "bg-white rounded-lg p-1") : "";
     
     if (pictogram.customImageUrl) {
         return (
@@ -103,7 +103,7 @@ export const PictogramCard: React.FC<Props> = ({
         `}
       >
         {activity.time && (
-          <span className={`text-xs font-black ${highContrast ? 'bg-black text-cyan-300 px-2' : 'bg-white/50 text-slate-600'} rounded-lg mb-1`}>
+          <span className={`text-xs font-black ${highContrast ? (activity.isDone ? 'bg-white text-black' : 'bg-black text-white') : 'bg-white/50 text-slate-600'} rounded-lg mb-1 px-2`}>
             {activity.time}
           </span>
         )}
@@ -137,7 +137,7 @@ export const PictogramCard: React.FC<Props> = ({
       aria-label={`Actividad: ${labelText}`}
     >
       {activity.time && (
-        <span className={`text-[10px] font-black ${highContrast ? 'bg-black text-cyan-300 px-1' : 'bg-white/50 text-slate-600'} rounded px-2 mb-1`}>
+        <span className={`text-[10px] font-black ${highContrast ? (activity.isDone ? 'bg-white text-black' : 'bg-black text-white') : 'bg-white/50 text-slate-600'} rounded px-2 mb-1`}>
           {activity.time}
         </span>
       )}
@@ -167,7 +167,8 @@ export const PictogramCard: React.FC<Props> = ({
           {onEdit && (
               <button 
                   onClick={(e) => handleAction(e, onEdit)} 
-                  className="p-1.5 bg-white text-blue-600 rounded-full border border-blue-200 shadow-sm hover:bg-blue-50 transition-colors"
+                  // Fix: Use highContrast instead of undefined isHighContrast
+                  className={`p-1.5 rounded-full border shadow-sm transition-colors ${highContrast ? 'bg-white text-black' : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'}`}
                   aria-label={`Editar ${labelText}`}
               >
                   <Pencil size={14} aria-hidden="true" />

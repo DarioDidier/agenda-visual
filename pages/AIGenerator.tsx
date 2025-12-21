@@ -24,13 +24,17 @@ interface EditablePic extends PictogramData {
 }
 
 export const AIGenerator: React.FC = () => {
-  const { addPictogram, setSchedule, weekDates } = useApp();
+  const { addPictogram, setSchedule, weekDates, settings } = useApp();
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
   const [translatedPics, setTranslatedPics] = useState<EditablePic[]>([]);
   const [selectedDayKey, setSelectedDayKey] = useState<string>(getLocalDateKey());
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('morning');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  const isHighContrast = settings.highContrast;
+  const titleColor = isHighContrast ? 'text-white' : 'text-slate-800';
+  const subtitleColor = isHighContrast ? 'text-cyan-300' : 'text-slate-500';
 
   const todayKey = getLocalDateKey();
   const aistudio = (window as any).aistudio;
@@ -93,20 +97,20 @@ export const AIGenerator: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-6 pb-20">
       <div className="text-center space-y-4">
-        <div className="inline-flex items-center gap-3 bg-indigo-100 text-indigo-700 px-6 py-2 rounded-full text-sm font-black border border-indigo-200">
+        <div className={`inline-flex items-center gap-3 px-6 py-2 rounded-full text-sm font-black border ${isHighContrast ? 'bg-cyan-900 border-cyan-400 text-white' : 'bg-indigo-100 text-indigo-700 border-indigo-200'}`}>
             <Sparkles size={20} className="animate-pulse" /> PICTOTRADUCTOR INTELIGENTE
         </div>
-        <h2 className="text-4xl font-black text-slate-800 tracking-tight">Asistente AI</h2>
-        <p className="text-slate-500 max-w-2xl mx-auto text-lg">Escribe frases naturales y deja que la inteligencia artificial encuentre la secuencia visual perfecta para tu agenda.</p>
+        <h2 className={`text-4xl font-black tracking-tight ${titleColor}`}>Asistente AI</h2>
+        <p className={`max-w-2xl mx-auto text-lg ${subtitleColor}`}>Escribe frases naturales y deja que la inteligencia artificial encuentre la secuencia visual perfecta para tu agenda.</p>
       </div>
 
-      <div className="bg-white p-8 rounded-[40px] shadow-2xl border-2 border-slate-100 space-y-6">
+      <div className={`p-8 rounded-[40px] shadow-2xl border-2 space-y-6 ${isHighContrast ? 'bg-black border-cyan-400' : 'bg-white border-slate-100'}`}>
         <div className="relative">
             <textarea 
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Ej: 'Mañana tengo fútbol a las seis después de la merienda'..."
-                className="w-full p-8 bg-slate-50 border-2 border-slate-100 rounded-[30px] h-48 focus:border-brand-primary outline-none resize-none text-2xl font-bold text-slate-700 placeholder:text-slate-300 transition-all shadow-inner"
+                className={`w-full p-8 border-2 rounded-[30px] h-48 focus:border-brand-primary outline-none resize-none text-2xl font-bold placeholder:text-slate-300 transition-all shadow-inner ${isHighContrast ? 'bg-white text-black border-transparent' : 'bg-slate-50 border-slate-100 text-slate-700'}`}
             />
             <div className="absolute bottom-6 right-6 flex gap-4">
                 <button onClick={handleClear} className="p-4 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all" title="Limpiar">
@@ -126,8 +130,8 @@ export const AIGenerator: React.FC = () => {
 
       {translatedPics.length > 0 && (
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in zoom-in-95 duration-500">
-              <div className="xl:col-span-2 bg-white p-8 rounded-[40px] border-2 border-indigo-100 shadow-xl overflow-x-auto">
-                  <h3 className="text-xs font-black text-indigo-900 uppercase mb-8 tracking-widest flex items-center gap-2">
+              <div className={`xl:col-span-2 p-8 rounded-[40px] border-2 shadow-xl overflow-x-auto ${isHighContrast ? 'bg-black border-white' : 'bg-white border-indigo-100'}`}>
+                  <h3 className={`text-xs font-black uppercase mb-8 tracking-widest flex items-center gap-2 ${isHighContrast ? 'text-white' : 'text-indigo-900'}`}>
                       <Pencil size={16} /> 1. Personaliza la secuencia
                   </h3>
                   <div className="flex items-center gap-8 min-w-max pb-6 px-2">
@@ -152,18 +156,18 @@ export const AIGenerator: React.FC = () => {
                                     newList[idx].label = e.target.value.toUpperCase();
                                     setTranslatedPics(newList);
                                 }}
-                                className="text-xs font-black text-center text-slate-600 uppercase w-full bg-transparent border-none outline-none focus:text-brand-primary tracking-tighter"
+                                className={`text-xs font-black text-center uppercase w-full bg-transparent border-none outline-none focus:text-brand-primary tracking-tighter ${isHighContrast ? 'text-white' : 'text-slate-600'}`}
                               />
-                              <div className="flex items-center gap-2 bg-indigo-50 px-3 py-2 rounded-xl border border-indigo-100">
+                              <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isHighContrast ? 'bg-white border-white' : 'bg-indigo-50 border-indigo-100'}`}>
                                   <Clock size={14} className="text-indigo-400" />
                                   <input type="time" value={pic.time} onChange={(e) => {
                                       const newList = [...translatedPics];
                                       newList[idx].time = e.target.value;
                                       setTranslatedPics(newList);
-                                  }} className="bg-transparent text-xs font-black text-indigo-700 outline-none w-16" />
+                                  }} className={`bg-transparent text-xs font-black outline-none w-16 ${isHighContrast ? 'text-black' : 'text-indigo-700'}`} />
                               </div>
                               {idx < translatedPics.length - 1 && (
-                                  <div className="absolute -right-5 top-14 text-slate-200">
+                                  <div className={`absolute -right-5 top-14 ${isHighContrast ? 'text-white' : 'text-slate-200'}`}>
                                       <ArrowRight size={20} />
                                   </div>
                               )}
@@ -172,7 +176,7 @@ export const AIGenerator: React.FC = () => {
                   </div>
               </div>
 
-              <div className="bg-slate-900 text-white p-8 rounded-[40px] shadow-2xl flex flex-col justify-between space-y-8">
+              <div className={`p-8 rounded-[40px] shadow-2xl flex flex-col justify-between space-y-8 ${isHighContrast ? 'bg-black border-2 border-cyan-400 text-white' : 'bg-slate-900 text-white'}`}>
                   <div className="space-y-6">
                       <div className="flex items-center gap-4 border-b border-white/10 pb-6">
                           <CheckCircle2 className="text-green-400" size={32} />
@@ -230,18 +234,18 @@ export const AIGenerator: React.FC = () => {
 
       {!translatedPics.length && !loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="bg-indigo-50/50 p-10 rounded-[40px] border border-indigo-100 flex gap-6 items-start">
-                  <div className="p-4 bg-white text-indigo-600 rounded-3xl shadow-sm"><MessageSquareText size={32} /></div>
+              <div className={`p-10 rounded-[40px] border flex gap-6 items-start ${isHighContrast ? 'bg-black border-cyan-400' : 'bg-indigo-50/50 border-indigo-100'}`}>
+                  <div className={`p-4 rounded-3xl shadow-sm ${isHighContrast ? 'bg-white text-black' : 'bg-white text-indigo-600'}`}><MessageSquareText size={32} /></div>
                   <div>
-                      <h4 className="text-xl font-black text-indigo-900">Lenguaje Natural</h4>
-                      <p className="text-indigo-700/70 mt-2 font-medium">Escribe como hablas. El motor AI ignora palabras vacías y se enfoca en acciones, personas y lugares visuales.</p>
+                      <h4 className={`text-xl font-black ${isHighContrast ? 'text-white' : 'text-indigo-900'}`}>Lenguaje Natural</h4>
+                      <p className={`mt-2 font-medium ${isHighContrast ? 'text-cyan-300' : 'text-indigo-700/70'}`}>Escribe como hablas. El motor AI ignora palabras vacías y se enfoca en acciones, personas y lugares visuales.</p>
                   </div>
               </div>
-              <div className="bg-amber-50/50 p-10 rounded-[40px] border border-amber-100 flex gap-6 items-start">
-                  <div className="p-4 bg-white text-amber-600 rounded-3xl shadow-sm"><HelpCircle size={32} /></div>
+              <div className={`p-10 rounded-[40px] border flex gap-6 items-start ${isHighContrast ? 'bg-black border-cyan-400' : 'bg-amber-50/50 border-amber-100'}`}>
+                  <div className={`p-4 rounded-3xl shadow-sm ${isHighContrast ? 'bg-white text-black' : 'bg-white text-amber-600'}`}><HelpCircle size={32} /></div>
                   <div>
-                      <h4 className="text-xl font-black text-amber-900">Seguridad Predictiva</h4>
-                      <p className="text-amber-700/70 mt-2 font-medium">Solo permite añadir rutinas a futuro para que los registros del pasado sirvan como historial inmutable.</p>
+                      <h4 className={`text-xl font-black ${isHighContrast ? 'text-white' : 'text-amber-900'}`}>Seguridad Predictiva</h4>
+                      <p className={`mt-2 font-medium ${isHighContrast ? 'text-cyan-300' : 'text-amber-700/70'}`}>Solo permite añadir rutinas a futuro para que los registros del pasado sirvan como historial inmutable.</p>
                   </div>
               </div>
           </div>

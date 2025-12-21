@@ -24,7 +24,7 @@ const spanishMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'J
 export const ScheduleView: React.FC = () => {
   const { 
     schedule, mode, pictograms, clearDayActivities, deleteActivity,
-    goToToday, changeWeek, weekDates 
+    goToToday, changeWeek, weekDates, settings 
   } = useApp();
   
   const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
@@ -42,7 +42,9 @@ export const ScheduleView: React.FC = () => {
 
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; dayKey: string; dayName: string } | null>(null);
 
+  const isHighContrast = settings.highContrast;
   const currentChildDayDate = weekDates[selectedDayIndex];
+  // Fix: Correct variable name from currentChildDayKey to currentChildDayDate to avoid self-reference error
   const currentChildDayKey = currentChildDayDate ? getDateKey(currentChildDayDate) : '';
   const todayKey = getDateKey(new Date());
 
@@ -95,34 +97,34 @@ export const ScheduleView: React.FC = () => {
 
   if (mode === UserMode.CHILD) {
     const displayDate = currentChildDayDate || new Date();
-    const dayActivities = (schedule[currentChildDayKey] || []).filter(a => (a.period || 'morning') === childActivePeriod);
+    const dayActivities = (schedule[getDateKey(displayDate)] || []).filter(a => (a.period || 'morning') === childActivePeriod);
     
     return (
       <div className="flex flex-col h-full space-y-4 max-w-7xl mx-auto w-full">
-        <div className="flex items-center justify-between bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+        <div className={`flex items-center justify-between p-4 rounded-3xl shadow-sm border ${isHighContrast ? 'bg-black border-cyan-400' : 'bg-white border-slate-100'}`}>
             <button 
                 onClick={() => setSelectedDayIndex(prev => Math.max(0, prev - 1))}
                 disabled={selectedDayIndex === 0}
-                className="p-4 bg-slate-50 rounded-2xl shadow-sm disabled:opacity-20 active:scale-90 transition-all"
+                className={`p-4 rounded-2xl shadow-sm disabled:opacity-20 active:scale-90 transition-all ${isHighContrast ? 'bg-white text-black' : 'bg-slate-50 text-brand-primary'}`}
             >
-                <ChevronLeft size={40} className="text-brand-primary" />
+                <ChevronLeft size={40} />
             </button>
             <div className="text-center">
-                <h2 className="text-4xl font-black text-slate-800 tracking-tight">
+                <h2 className={`text-4xl font-black tracking-tight ${isHighContrast ? 'text-white' : 'text-slate-800'}`}>
                     {spanishDays[displayDate.getDay()]} {displayDate.getDate()}
                 </h2>
-                <p className="text-slate-400 font-bold uppercase text-sm tracking-widest">{spanishMonths[displayDate.getMonth()]}</p>
+                <p className={`font-bold uppercase text-sm tracking-widest ${isHighContrast ? 'text-cyan-300' : 'text-slate-400'}`}>{spanishMonths[displayDate.getMonth()]}</p>
             </div>
             <button 
                 onClick={() => setSelectedDayIndex(prev => Math.min(6, prev + 1))}
                 disabled={selectedDayIndex === 6}
-                className="p-4 bg-slate-50 rounded-2xl shadow-sm disabled:opacity-20 active:scale-90 transition-all"
+                className={`p-4 rounded-2xl shadow-sm disabled:opacity-20 active:scale-90 transition-all ${isHighContrast ? 'bg-white text-black' : 'bg-slate-50 text-brand-primary'}`}
             >
-                <ChevronRight size={40} className="text-brand-primary" />
+                <ChevronRight size={40} />
             </button>
         </div>
 
-        <nav className="flex p-2 bg-slate-200/50 rounded-3xl mx-2 gap-2">
+        <nav className={`flex p-2 rounded-3xl mx-2 gap-2 ${isHighContrast ? 'bg-white/10' : 'bg-slate-200/50'}`}>
             {(['morning', 'afternoon', 'evening'] as TimePeriod[]).map((p) => {
                  const isActive = childActivePeriod === p;
                  return (
@@ -132,7 +134,7 @@ export const ScheduleView: React.FC = () => {
                         className={`flex-1 flex flex-col items-center py-4 rounded-2xl transition-all ${isActive ? 'bg-white shadow-lg scale-105 z-10' : 'opacity-40 hover:opacity-60'}`}
                     >
                         {p === 'morning' ? <Sun className="text-yellow-500" size={32} /> : p === 'afternoon' ? <Sunset className="text-orange-500" size={32} /> : <Moon className="text-indigo-500" size={32} />}
-                        <span className={`text-sm font-black mt-1 uppercase ${isActive ? 'text-slate-800' : 'text-slate-500'}`}>
+                        <span className={`text-sm font-black mt-1 uppercase ${isActive ? 'text-slate-800' : (isHighContrast ? 'text-white' : 'text-slate-500')}`}>
                             {p === 'morning' ? 'Mañana' : p === 'afternoon' ? 'Tarde' : 'Noche'}
                         </span>
                     </button>
@@ -142,9 +144,9 @@ export const ScheduleView: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto pb-24 px-2">
              {dayActivities.length === 0 ? (
-                 <div className="flex flex-col items-center justify-center h-full text-slate-300 py-20">
-                     <CalendarDays size={80} className="opacity-20 mb-4" />
-                     <p className="text-2xl font-black">¡Momento de descanso!</p>
+                 <div className="flex flex-col items-center justify-center h-full py-20 opacity-20">
+                     <CalendarDays size={80} className={`${isHighContrast ? 'text-white' : 'text-slate-400'} mb-4`} />
+                     <p className={`text-2xl font-black ${isHighContrast ? 'text-white' : 'text-slate-400'}`}>¡Momento de descanso!</p>
                  </div>
              ) : (
                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -153,7 +155,7 @@ export const ScheduleView: React.FC = () => {
                             key={activity.id}
                             activity={activity} 
                             pictogram={getPictogram(activity.pictogramId)} 
-                            day={currentChildDayKey}
+                            day={getDateKey(displayDate)}
                         />
                     ))}
                  </div>
@@ -165,18 +167,18 @@ export const ScheduleView: React.FC = () => {
 
   return (
     <div className="space-y-8 max-w-[1600px] mx-auto pb-20">
-      <header className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+      <header className={`p-6 rounded-3xl shadow-sm border flex flex-col xl:flex-row xl:items-center justify-between gap-6 ${isHighContrast ? 'bg-black border-cyan-400' : 'bg-white border-slate-100'}`}>
           <div className="flex items-center gap-6">
-              <div className="flex items-center bg-slate-100 rounded-2xl p-1 shadow-inner">
-                <button onClick={() => changeWeek(-1)} className="p-3 hover:bg-white rounded-xl transition-all">
-                    <ChevronLeft size={24} className="text-slate-600" />
+              <div className={`flex items-center rounded-2xl p-1 shadow-inner ${isHighContrast ? 'bg-white/10' : 'bg-slate-100'}`}>
+                <button onClick={() => changeWeek(-1)} className={`p-3 rounded-xl transition-all ${isHighContrast ? 'hover:bg-white/20 text-white' : 'hover:bg-white text-slate-600'}`}>
+                    <ChevronLeft size={24} />
                 </button>
-                <button onClick={goToToday} className="px-6 py-2 text-sm font-black text-slate-700 hover:text-brand-primary transition-colors uppercase">ESTA SEMANA</button>
-                <button onClick={() => changeWeek(1)} className="p-3 hover:bg-white rounded-xl transition-all">
-                    <ChevronRight size={24} className="text-slate-600" />
+                <button onClick={goToToday} className={`px-6 py-2 text-sm font-black transition-colors uppercase ${isHighContrast ? 'text-white hover:text-cyan-300' : 'text-slate-700 hover:text-brand-primary'}`}>ESTA SEMANA</button>
+                <button onClick={() => changeWeek(1)} className={`p-3 rounded-xl transition-all ${isHighContrast ? 'hover:bg-white/20 text-white' : 'hover:bg-white text-slate-600'}`}>
+                    <ChevronRight size={24} />
                 </button>
               </div>
-              <h2 className="text-2xl font-black text-slate-800 border-l-4 border-brand-primary pl-4 uppercase">
+              <h2 className={`text-2xl font-black border-l-4 border-brand-primary pl-4 uppercase ${isHighContrast ? 'text-white' : 'text-slate-800'}`}>
                   {spanishMonths[weekDates[0].getMonth()]} {weekDates[0].getFullYear()}
               </h2>
           </div>
@@ -188,7 +190,7 @@ export const ScheduleView: React.FC = () => {
                <button onClick={() => setIsLibraryOpen(true)} className="bg-slate-800 text-white px-6 py-3 rounded-2xl text-sm font-black flex items-center gap-2 hover:bg-slate-900 transition-all shadow-lg active:scale-95">
                    <Book size={20} /> BIBLIOTECA
                </button>
-               <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+               <div className={`flex p-1.5 rounded-2xl border ${isHighContrast ? 'bg-white/10 border-white/20' : 'bg-slate-100 border-slate-200'}`}>
                     <button onClick={() => setViewFormat('grid')} className={`p-2.5 rounded-xl transition-all ${viewFormat === 'grid' ? 'bg-white shadow-md text-brand-primary' : 'text-slate-400 hover:text-slate-600'}`}>
                         <Grid size={20} />
                     </button>
@@ -208,23 +210,23 @@ export const ScheduleView: React.FC = () => {
             const dayName = spanishDays[dateObj.getDay()];
 
             return (
-            <section key={dayKey} className={`bg-white rounded-3xl border shadow-sm flex flex-col relative transition-all duration-300 ${isToday ? 'ring-4 ring-brand-primary ring-offset-4' : 'hover:border-slate-300'} ${isPast ? 'opacity-70 bg-slate-50/50 grayscale-[0.3]' : ''}`}>
-                <div className={`p-4 flex justify-between items-center rounded-t-3xl border-b ${isToday ? 'bg-brand-primary/5' : 'bg-slate-50/30'}`}>
+            <section key={dayKey} className={`rounded-3xl border shadow-sm flex flex-col relative transition-all duration-300 ${isHighContrast ? 'bg-black border-white' : 'bg-white border-slate-100'} ${isToday ? 'ring-4 ring-brand-primary ring-offset-4' : 'hover:border-slate-300'} ${isPast ? 'opacity-70 bg-slate-50/50 grayscale-[0.3]' : ''}`}>
+                <div className={`p-4 flex justify-between items-center rounded-t-3xl border-b ${isToday ? 'bg-brand-primary/5' : (isHighContrast ? 'bg-white/5' : 'bg-slate-50/30')}`}>
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{dayName}</span>
-                        <span className="text-xl font-black text-slate-800">{dateObj.getDate()}</span>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${isHighContrast ? 'text-cyan-300' : 'text-slate-400'}`}>{dayName}</span>
+                        <span className={`text-xl font-black ${isHighContrast ? 'text-white' : 'text-slate-800'}`}>{dateObj.getDate()}</span>
                     </div>
                     <div className="flex gap-1">
                         {!isPast && dayActivities.length > 0 && (
                             <button 
                                 onClick={() => handleOpenDeleteModal(dayKey, dayName)} 
-                                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all" 
+                                className={`p-2 transition-all ${isHighContrast ? 'text-red-400 hover:text-red-600' : 'text-slate-300 hover:text-red-500 hover:bg-red-50'} rounded-xl`} 
                                 title="Borrar rutina completa"
                             >
                                 <Trash2 size={16} />
                             </button>
                         )}
-                        <button onClick={() => handleExportPDF(dayKey, dateObj)} className="p-2 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Exportar PDF">
+                        <button onClick={() => handleExportPDF(dayKey, dateObj)} className={`p-2 rounded-xl transition-all ${isHighContrast ? 'text-cyan-400 hover:text-white' : 'text-slate-300 hover:text-blue-600 hover:bg-blue-50'}`} title="Exportar PDF">
                             {generatingPdfFor === dayKey ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
                         </button>
                         {!isPast && (
@@ -238,7 +240,7 @@ export const ScheduleView: React.FC = () => {
                 <div className="p-4 space-y-3 min-h-[120px]">
                     {dayActivities.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-10 opacity-20">
-                            <Plus size={32} className="text-slate-400" />
+                            <Plus size={32} className={isHighContrast ? 'text-white' : 'text-slate-400'} />
                         </div>
                     ) : (
                         dayActivities.map((activity) => (

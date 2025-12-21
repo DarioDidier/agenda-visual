@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight, Trash2, Plus } from 'lucide-react';
+import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight, Trash2, Plus, Eye, Type } from 'lucide-react';
 import { translateTextToKeywords } from '../services/geminiService';
 import { searchArasaac, getArasaacImageUrl } from '../services/arasaacService';
 import { Activity, PictogramData, Category, TimePeriod } from '../types';
@@ -26,7 +26,7 @@ interface EasyDraftPic extends PictogramData {
 }
 
 export const EasyCreator: React.FC = () => {
-  const { addPictogram, setSchedule, pictograms } = useApp();
+  const { addPictogram, setSchedule, pictograms, settings, updateSettings } = useApp();
   const [step, setStep] = useState(1);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,6 +35,10 @@ export const EasyCreator: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('morning');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  const isHighContrast = settings.highContrast;
+  const titleColor = isHighContrast ? 'text-white' : 'text-slate-800';
+  const subtitleColor = isHighContrast ? 'text-cyan-300' : 'text-slate-500';
 
   const todayKey = useMemo(() => getDateKey(new Date()), []);
   
@@ -138,11 +142,18 @@ export const EasyCreator: React.FC = () => {
       setDraftPics(prev => prev.map((p, i) => i === index ? { ...p, ...updates } : p));
   };
 
-  const getDayLabel = (dateKey: string) => {
-      if (dateKey === todayKey) return "Hoy";
-      const parts = dateKey.split('-');
-      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-      return `${spanishDays[d.getDay()]} ${d.getDate()}`;
+  const toggleHighContrast = () => {
+      updateSettings({ highContrast: !settings.highContrast });
+      speakText(settings.highContrast ? "Modo normal activado" : "Modo alto contraste activado");
+  };
+
+  const cycleFontSize = () => {
+      const sizes = [1, 1.25, 1.5, 0.8];
+      const currentIndex = sizes.indexOf(settings.fontSize);
+      const nextIndex = (currentIndex + 1) % sizes.length;
+      const nextSize = sizes[nextIndex];
+      updateSettings({ fontSize: nextSize });
+      speakText(`Tamaño de letra al ${Math.round(nextSize * 100)} por ciento`);
   };
 
   if (showSuccess) {
@@ -151,32 +162,32 @@ export const EasyCreator: React.FC = () => {
               <div className="w-24 h-24 bg-green-500 text-white rounded-full flex items-center justify-center shadow-xl">
                   <Check size={48} strokeWidth={4} />
               </div>
-              <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tighter">¡GUARDADO!</h2>
+              <h2 className={`text-3xl font-black uppercase tracking-tighter ${isHighContrast ? 'text-white' : 'text-slate-800'}`}>¡GUARDADO!</h2>
           </div>
       );
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8 pb-32 animate-in fade-in duration-500">
+    <div className="max-w-2xl mx-auto space-y-8 pb-32 animate-in fade-in duration-500 relative min-h-[70vh]">
       <div className="flex justify-between items-center px-4">
         {[1, 2, 3].map(i => (
-          <div key={i} className={`h-4 flex-1 mx-1 rounded-full transition-all duration-700 ${step >= i ? 'bg-brand-primary' : 'bg-slate-200'}`} />
+          <div key={i} className={`h-4 flex-1 mx-1 rounded-full transition-all duration-700 ${step >= i ? 'bg-brand-primary' : (isHighContrast ? 'bg-slate-800' : 'bg-slate-200')}`} />
         ))}
       </div>
 
       {step === 1 && (
         <div className="space-y-6 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
-            <h2 className="text-4xl font-black text-slate-800 tracking-tight">¿Qué vamos a hacer?</h2>
-            <p className="text-slate-500 font-bold text-lg">Escribe tu plan para hoy</p>
+            <h2 className={`text-4xl font-black tracking-tight ${titleColor}`}>¿Qué vamos a hacer?</h2>
+            <p className={`font-bold text-lg ${subtitleColor}`}>Escribe tu plan para hoy</p>
           </div>
           
-          <div className="bg-white p-6 rounded-[50px] shadow-2xl border-4 border-slate-100 ring-8 ring-slate-50">
+          <div className={`bg-white p-6 rounded-[50px] shadow-2xl border-4 ring-8 ${isHighContrast ? 'border-cyan-400 ring-cyan-900/30' : 'border-slate-100 ring-slate-50'}`}>
             <textarea 
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Ej: Desayuno y parque..."
-              className="w-full h-40 text-3xl font-bold p-4 bg-slate-50 border-none rounded-3xl resize-none outline-none text-slate-700 placeholder:text-slate-200"
+              className="w-full h-40 text-3xl font-bold p-4 bg-slate-50 border-none rounded-3xl resize-none outline-none text-slate-700 placeholder:text-slate-300"
             />
           </div>
 
@@ -194,13 +205,13 @@ export const EasyCreator: React.FC = () => {
       {step === 2 && (
         <div className="space-y-8 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
-            <h2 className="text-4xl font-black text-slate-800">¿Cuándo lo harás?</h2>
-            <p className="text-slate-500 font-bold text-lg">Revisa tus dibujos</p>
+            <h2 className={`text-4xl font-black ${titleColor}`}>¿Cuándo lo harás?</h2>
+            <p className={`font-bold text-lg ${subtitleColor}`}>Revisa tus dibujos</p>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
             {draftPics.map((p, i) => (
-              <div key={i} className="bg-white p-6 rounded-[40px] border-4 border-indigo-50 shadow-lg flex items-center gap-6">
+              <div key={i} className={`bg-white p-6 rounded-[40px] border-4 shadow-lg flex items-center gap-6 ${isHighContrast ? 'border-cyan-400' : 'border-indigo-50'}`}>
                   <button 
                     onClick={() => { setEditingIndex(i); }}
                     className={`w-28 h-28 rounded-[35px] flex items-center justify-center border-4 relative shrink-0 active:scale-90 transition-transform overflow-hidden ${p.customImageUrl ? 'border-brand-primary' : 'bg-slate-50 border-indigo-100'}`}
@@ -235,7 +246,7 @@ export const EasyCreator: React.FC = () => {
 
                   <button 
                     onClick={() => setDraftPics(prev => prev.filter((_, idx) => idx !== i))}
-                    className="p-3 text-red-200 hover:text-red-500 transition-colors"
+                    className={`p-3 transition-colors ${isHighContrast ? 'text-red-400 hover:text-red-600' : 'text-red-200 hover:text-red-500'}`}
                   >
                       <Trash2 size={24} />
                   </button>
@@ -244,7 +255,7 @@ export const EasyCreator: React.FC = () => {
             
             <button 
                 onClick={() => setStep(1)}
-                className="w-full py-6 border-4 border-dashed border-slate-200 rounded-[40px] text-slate-400 flex items-center justify-center gap-2 font-black hover:bg-slate-50 transition-all"
+                className={`w-full py-6 border-4 border-dashed rounded-[40px] flex items-center justify-center gap-2 font-black transition-all ${isHighContrast ? 'border-white/20 text-white hover:bg-white/10' : 'border-slate-200 text-slate-400 hover:bg-slate-50'}`}
             >
                 <Plus size={24} /> AGREGAR MÁS
             </button>
@@ -255,7 +266,7 @@ export const EasyCreator: React.FC = () => {
               <button 
                 key={p}
                 onClick={() => setSelectedPeriod(p)}
-                className={`py-8 rounded-[40px] border-4 flex flex-col items-center gap-1 transition-all ${selectedPeriod === p ? 'bg-brand-primary text-white border-brand-primary shadow-xl scale-105' : 'bg-white text-slate-400 border-slate-100'}`}
+                className={`py-8 rounded-[40px] border-4 flex flex-col items-center gap-1 transition-all ${selectedPeriod === p ? 'bg-brand-primary text-white border-brand-primary shadow-xl scale-105' : (isHighContrast ? 'bg-black text-white border-white/20' : 'bg-white text-slate-400 border-slate-100')}`}
               >
                 {p === 'morning' ? <Sun size={32} /> : p === 'afternoon' ? <Sunset size={32} /> : <Moon size={32} />}
                 <span className="text-xs font-black uppercase">{p === 'morning' ? 'Mañana' : p === 'afternoon' ? 'Tarde' : 'Noche'}</span>
@@ -264,7 +275,7 @@ export const EasyCreator: React.FC = () => {
           </div>
 
           <div className="flex gap-4 pt-4">
-            <button onClick={() => setStep(1)} className="flex-1 py-6 bg-slate-100 text-slate-500 rounded-[35px] font-black text-lg active:scale-95 transition-all">VOLVER</button>
+            <button onClick={() => setStep(1)} className={`flex-1 py-6 rounded-[35px] font-black text-lg active:scale-95 transition-all ${isHighContrast ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-500'}`}>VOLVER</button>
             <button onClick={() => { setStep(3); }} className="flex-[2] py-6 bg-brand-primary text-white rounded-[35px] font-black text-lg shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2">
                 CONTINUAR <ChevronRight size={24} />
             </button>
@@ -275,8 +286,8 @@ export const EasyCreator: React.FC = () => {
       {step === 3 && (
         <div className="space-y-8 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
-            <h2 className="text-4xl font-black text-slate-800">¿Qué día?</h2>
-            <p className="text-slate-500 font-bold text-lg">Selecciona la fecha</p>
+            <h2 className={`text-4xl font-black ${titleColor}`}>¿Qué día?</h2>
+            <p className={`font-bold text-lg ${subtitleColor}`}>Selecciona la fecha</p>
           </div>
 
           <div className="grid grid-cols-4 gap-2">
@@ -287,7 +298,7 @@ export const EasyCreator: React.FC = () => {
                 <button 
                   key={key}
                   onClick={() => setSelectedDay(key)}
-                  className={`py-6 rounded-[30px] border-4 flex flex-col items-center transition-all ${isSelected ? 'bg-brand-primary text-white border-brand-primary shadow-lg scale-105' : 'bg-white text-slate-400 border-slate-100'}`}
+                  className={`py-6 rounded-[30px] border-4 flex flex-col items-center transition-all ${isSelected ? 'bg-brand-primary text-white border-brand-primary shadow-lg scale-105' : (isHighContrast ? 'bg-black text-white border-white/20' : 'bg-white text-slate-400 border-slate-100')}`}
                 >
                   <span className="text-[10px] font-black uppercase">{spanishDays[date.getDay()]}</span>
                   <span className="text-2xl font-black">{date.getDate()}</span>
@@ -296,8 +307,8 @@ export const EasyCreator: React.FC = () => {
             })}
           </div>
 
-          <div className="bg-white p-6 rounded-[40px] border-4 border-indigo-50 shadow-xl flex flex-col items-center gap-3">
-              <label className="text-slate-400 font-black uppercase text-xs tracking-widest flex items-center gap-2">
+          <div className={`p-6 rounded-[40px] border-4 shadow-xl flex flex-col items-center gap-3 ${isHighContrast ? 'bg-black border-cyan-400' : 'bg-white border-indigo-50'}`}>
+              <label className={`font-black uppercase text-xs tracking-widest flex items-center gap-2 ${isHighContrast ? 'text-white' : 'text-slate-400'}`}>
                   <CalendarIcon size={16} /> O elige otra fecha
               </label>
               <input 
@@ -305,7 +316,7 @@ export const EasyCreator: React.FC = () => {
                   min={todayKey}
                   value={selectedDay}
                   onChange={(e) => setSelectedDay(e.target.value)}
-                  className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-2xl font-black text-center text-slate-700 outline-none focus:border-brand-primary"
+                  className={`w-full p-4 rounded-2xl text-2xl font-black text-center outline-none focus:border-brand-primary ${isHighContrast ? 'bg-white text-black' : 'bg-slate-50 border-2 border-slate-100 text-slate-700'}`}
               />
           </div>
 
@@ -321,17 +332,35 @@ export const EasyCreator: React.FC = () => {
 
             <button 
               onClick={handleExportToday}
-              className="w-full py-6 bg-white text-brand-primary border-4 border-brand-primary/20 rounded-[40px] flex items-center justify-center gap-3 font-black text-xl hover:bg-brand-primary/5 transition-all"
+              className={`w-full py-6 rounded-[40px] flex items-center justify-center gap-3 font-black text-xl transition-all ${isHighContrast ? 'bg-white text-brand-primary' : 'bg-white text-brand-primary border-4 border-brand-primary/20 hover:bg-brand-primary/5'}`}
             >
               <Printer size={28} /> IMPRIMIR
             </button>
           </div>
 
-          <button onClick={() => setStep(2)} className="w-full py-4 text-slate-400 font-black uppercase text-[10px] tracking-[0.3em] hover:text-slate-600 transition-all">
+          <button onClick={() => setStep(2)} className={`w-full py-4 font-black uppercase text-[10px] tracking-[0.3em] transition-all ${isHighContrast ? 'text-cyan-300 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
               Volver a editar
           </button>
         </div>
       )}
+
+      {/* Botones Flotantes de Accesibilidad */}
+      <div className="fixed bottom-24 right-6 flex flex-col gap-4 z-[99]">
+          <button 
+            onClick={toggleHighContrast}
+            title="Alternar Alto Contraste"
+            className={`w-20 h-20 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-4 flex items-center justify-center transition-all active:scale-90 animate-in zoom-in duration-300 ${isHighContrast ? 'bg-cyan-400 border-white text-black' : 'bg-slate-900 border-slate-700 text-white'}`}
+          >
+              <Eye size={36} strokeWidth={3} />
+          </button>
+          <button 
+            onClick={cycleFontSize}
+            title="Cambiar tamaño de texto"
+            className={`w-20 h-20 rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] border-4 flex items-center justify-center transition-all active:scale-90 animate-in zoom-in duration-300 delay-100 ${isHighContrast ? 'bg-white border-cyan-400 text-black' : 'bg-brand-primary border-white text-white'}`}
+          >
+              <Type size={36} strokeWidth={3} />
+          </button>
+      </div>
 
       {editingIndex !== null && (
           <PictogramSelectorModal 
