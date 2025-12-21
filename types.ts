@@ -3,7 +3,8 @@ import { LucideIcon } from 'lucide-react';
 
 export enum UserMode {
   CHILD = 'CHILD',
-  ADULT = 'ADULT'
+  ADULT = 'ADULT',
+  EASY_ADULT = 'EASY_ADULT'
 }
 
 export enum SupportLevel {
