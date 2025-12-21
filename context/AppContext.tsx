@@ -3,11 +3,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AppSettings, UserMode, WeekSchedule, PictogramData, PersonOrPlace, Activity, Reward, RewardSchedule, TimePeriod, SavedRoutine } from '../types';
 import { INITIAL_PICTOGRAMS, EMPTY_SCHEDULE } from '../constants';
 
-// Date Utility Helpers
+// Generador de ID seguro y compatible (fallback para crypto.randomUUID)
+const generateId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+
 const getMonday = (d: Date) => {
   const date = new Date(d);
   const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
   return new Date(date.setDate(diff));
 };
 
@@ -29,23 +31,19 @@ interface AppContextType {
   deleteActivity: (day: string, activityId: string) => void;
   clearDayActivities: (dayKey: string) => void;
   copyRoutine: (sourceDay: string, targetDay: string) => void;
-  // Rewards
   rewards: RewardSchedule;
   setReward: (dayKey: string, period: TimePeriod, label: string, emoji: string, imageUrl?: string) => void;
   redeemReward: (dayKey: string, period: TimePeriod) => void;
-  // Date Navigation
   currentDate: Date;
   setCurrentDate: (date: Date) => void;
   goToToday: () => void;
   changeWeek: (weeks: number) => void;
-  weekDates: Date[]; // The 7 dates of the current week
-  // Saved Routines (Library)
+  weekDates: Date[];
   savedRoutines: SavedRoutine[];
   saveRoutineToLibrary: (name: string, description: string, activities: Activity[]) => void;
   importRoutineToLibrary: (routineData: SavedRoutine) => void;
   deleteRoutineFromLibrary: (id: string) => void;
   applyRoutineToDay: (routineId: string, targetDay: string, targetPeriod: TimePeriod) => void;
-  // Backup
   generateBackupData: () => string;
   restoreBackupData: (jsonData: string) => boolean;
 }
@@ -75,10 +73,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   const [peoplePlaces, setPeoplePlaces] = useState<PersonOrPlace[]>(() => {
       const saved = localStorage.getItem('mav_people');
-      return saved ? JSON.parse(saved) : [
-          {id: 'pp1', name: 'Mamá', type: 'PERSON', imageUrl: 'https://picsum.photos/200/200'},
-          {id: 'pp2', name: 'Escuela', type: 'PLACE', imageUrl: 'https://picsum.photos/201/201'}
-      ];
+      return saved ? JSON.parse(saved) : [];
   });
 
   const [savedRoutines, setSavedRoutines] = useState<SavedRoutine[]>(() => {
@@ -95,8 +90,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       voiceEnabled: true,
       autoSpeak: true,
       pin: '1234',
-      securityQuestion: '¿Cuál es el nombre de tu primera mascota?',
-      securityAnswer: '',
       ...parsed
     };
   });
@@ -106,9 +99,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => { localStorage.setItem('mav_mode', mode); }, [mode]);
   useEffect(() => { localStorage.setItem('mav_schedule', JSON.stringify(schedule)); }, [schedule]);
   useEffect(() => { localStorage.setItem('mav_rewards', JSON.stringify(rewards)); }, [rewards]);
-  useEffect(() => {
-    try { localStorage.setItem('mav_people', JSON.stringify(peoplePlaces)); } catch (e) { console.error("Local Storage Full", e); }
-  }, [peoplePlaces]);
+  useEffect(() => { localStorage.setItem('mav_people', JSON.stringify(peoplePlaces)); }, [peoplePlaces]);
   useEffect(() => { localStorage.setItem('mav_pictograms', JSON.stringify(pictograms)); }, [pictograms]);
   useEffect(() => { localStorage.setItem('mav_settings', JSON.stringify(settings)); }, [settings]);
   useEffect(() => { localStorage.setItem('mav_saved_routines', JSON.stringify(savedRoutines)); }, [savedRoutines]);
@@ -173,7 +164,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSchedule(prev => {
           const sourceActivities = prev[sourceDayKey];
           if (!sourceActivities || sourceActivities.length === 0) return prev;
-          const newActivities = sourceActivities.map(act => ({ ...act, id: crypto.randomUUID(), isDone: false }));
+          const newActivities = sourceActivities.map(act => ({ ...act, id: generateId(), isDone: false }));
           return { ...prev, [targetDayKey]: [...(prev[targetDayKey] || []), ...newActivities] };
       });
   };
@@ -182,9 +173,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const usedPicIds = new Set(activities.map(a => a.pictogramId));
       const requiredPictograms = pictograms.filter(p => usedPicIds.has(p.id));
       const newRoutine: SavedRoutine = {
-          id: crypto.randomUUID(),
+          id: generateId(),
           name, description,
-          activities: activities.map(a => ({ ...a, id: crypto.randomUUID(), isDone: false })),
+          activities: activities.map(a => ({ ...a, id: generateId(), isDone: false })),
           requiredPictograms
       };
       setSavedRoutines(prev => [...prev, newRoutine]);
@@ -196,7 +187,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const newPics = routineData.requiredPictograms.filter(p => !existingIds.has(p.id));
           return [...prev, ...newPics];
       });
-      const importedRoutine = { ...routineData, id: crypto.randomUUID(), name: `${routineData.name} (Importada)` };
+      const importedRoutine = { ...routineData, id: generateId(), name: `${routineData.name} (Importada)` };
       setSavedRoutines(prev => [...prev, importedRoutine]);
   };
 
@@ -206,7 +197,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const routine = savedRoutines.find(r => r.id === routineId);
       if (!routine) return;
       const newActivities: Activity[] = routine.activities.map(a => ({
-          ...a, id: crypto.randomUUID(), period: targetPeriod, isDone: false, time: a.time || ''
+          ...a, id: generateId(), period: targetPeriod, isDone: false, time: a.time || ''
       }));
       setSchedule(prev => {
           const combined = [...(prev[targetDay] || []), ...newActivities];
@@ -217,7 +208,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setReward = (dayKey: string, period: TimePeriod, label: string, emoji: string, imageUrl?: string) => {
     const key = `${dayKey}-${period}`;
-    setRewards(prev => ({ ...prev, [key]: { id: crypto.randomUUID(), dayKey, period, label, emoji, imageUrl, isRedeemed: false } }));
+    setRewards(prev => ({ ...prev, [key]: { id: generateId(), dayKey, period, label, emoji, imageUrl, isRedeemed: false } }));
   };
 
   const redeemReward = (dayKey: string, period: TimePeriod) => {
@@ -227,13 +218,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const generateBackupData = () => {
-    return JSON.stringify({ meta: { version: '1.0', date: new Date().toISOString() }, data: { schedule, rewards, pictograms, peoplePlaces, savedRoutines, settings } }, null, 2);
+    return JSON.stringify({ meta: { version: '1.0' }, data: { schedule, rewards, pictograms, peoplePlaces, savedRoutines, settings } }, null, 2);
   };
 
   const restoreBackupData = (jsonString: string) => {
     try {
       const backup = JSON.parse(jsonString);
-      if (!backup.data) throw new Error("Formato inválido");
+      if (!backup.data) return false;
       const { data } = backup;
       if(data.schedule) setSchedule(data.schedule);
       if(data.rewards) setRewards(data.rewards);

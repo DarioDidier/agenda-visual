@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight, Trash2, Plus, PartyPopper } from 'lucide-react';
+import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight, Trash2, Plus, CheckCircle2 } from 'lucide-react';
 import { translateTextToKeywords } from '../services/geminiService';
 import { searchArasaac, getArasaacImageUrl } from '../services/arasaacService';
 import { Activity, PictogramData, Category, TimePeriod } from '../types';
@@ -9,7 +9,7 @@ import { speakText } from '../services/speechService';
 import { exportScheduleToPDF } from '../services/pdfService';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
 
-// Generador de ID seguro para evitar errores en navegadores que no soportan crypto.randomUUID
+// Generador de ID seguro local
 const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 
 const getDateKey = (d: Date) => {
@@ -86,7 +86,9 @@ export const EasyCreator: React.FC = () => {
     try {
         if (draftPics.length === 0) return;
 
+        // 1. Preparar actividades
         const newActivities: Activity[] = draftPics.map(pic => {
+          // Asegurar que el pictograma se registre en la librería global
           addPictogram(pic);
           return {
             id: generateSafeId(),
@@ -98,18 +100,22 @@ export const EasyCreator: React.FC = () => {
           };
         });
 
+        // 2. Actualizar agenda del día específico
         setSchedule(prev => {
             const currentDayActivities = prev[selectedDay] || [];
+            const updatedDay = [...currentDayActivities, ...newActivities];
+            // Ordenar por hora
+            updatedDay.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
+            
             return {
                 ...prev,
-                [selectedDay]: [...currentDayActivities, ...newActivities]
+                [selectedDay]: updatedDay
             };
         });
 
-        speakText("¡Agenda guardada con éxito!");
+        speakText("¡Agenda guardada correctamente!");
         setShowSuccess(true);
         
-        // Pequeña pausa para mostrar el éxito antes de resetear
         setTimeout(() => {
             setShowSuccess(false);
             setStep(1);
@@ -118,7 +124,7 @@ export const EasyCreator: React.FC = () => {
         }, 2000);
     } catch (error) {
         console.error("Error al guardar:", error);
-        alert("Ocurrió un error al guardar. Por favor, intenta de nuevo.");
+        alert("Ocurrió un problema al guardar. Intenta de nuevo.");
     }
   };
 
@@ -143,14 +149,13 @@ export const EasyCreator: React.FC = () => {
       return `${spanishDays[d.getDay()]} ${d.getDate()}`;
   };
 
-  // Pantalla de éxito momentánea
   if (showSuccess) {
       return (
           <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 animate-in zoom-in-95 duration-500">
               <div className="w-40 h-40 bg-green-100 text-green-500 rounded-full flex items-center justify-center shadow-2xl border-8 border-green-50">
-                  <PartyPopper size={80} />
+                  <CheckCircle2 size={80} />
               </div>
-              <h2 className="text-5xl font-black text-slate-800 text-center">¡GUARDADO!</h2>
+              <h2 className="text-5xl font-black text-slate-800 text-center uppercase tracking-tighter">¡GUARDADO!</h2>
               <p className="text-2xl font-bold text-slate-400">Tu rutina está lista</p>
           </div>
       );
@@ -158,14 +163,12 @@ export const EasyCreator: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-32 animate-in fade-in duration-500">
-      {/* Pasos visuales */}
       <div className="flex justify-between items-center px-4">
         {[1, 2, 3].map(i => (
           <div key={i} className={`h-4 flex-1 mx-1 rounded-full transition-all duration-700 ${step >= i ? 'bg-brand-primary' : 'bg-slate-200'}`} />
         ))}
       </div>
 
-      {/* PASO 1: ¿QUÉ HAREMOS? */}
       {step === 1 && (
         <div className="space-y-6 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
@@ -193,7 +196,6 @@ export const EasyCreator: React.FC = () => {
         </div>
       )}
 
-      {/* PASO 2: ¿CUÁNDO LO HARÁS? (EDICIÓN) */}
       {step === 2 && (
         <div className="space-y-8 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
@@ -283,7 +285,6 @@ export const EasyCreator: React.FC = () => {
         </div>
       )}
 
-      {/* PASO 3: ¿QUÉ DÍA? */}
       {step === 3 && (
         <div className="space-y-8 animate-in slide-in-from-right duration-500">
           <div className="text-center space-y-2">
