@@ -1,6 +1,7 @@
+
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { ToggleLeft, ToggleRight, Volume2, Type, Eye, Lock, ShieldQuestion, Save, CloudDownload, CloudUpload, HardDrive, Check } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Volume2, Type, Eye, Lock, ShieldQuestion, Save, CloudDownload, CloudUpload, HardDrive, Check, Plus, Minus } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const { settings, updateSettings, generateBackupData, restoreBackupData } = useApp();
@@ -21,7 +22,7 @@ export const SettingsPage: React.FC = () => {
             <div className={`p-2 rounded-lg ${settings.highContrast ? 'bg-cyan-400 text-black' : 'bg-slate-100 text-slate-600'}`}>
                 <Icon size={24} />
             </div>
-            <span className={`font-medium text-lg ${settings.highContrast ? 'text-cyan-300' : 'text-slate-800'}`}>{label}</span>
+            <span className={`font-bold text-lg ${settings.highContrast ? 'text-cyan-300' : 'text-slate-800'}`}>{label}</span>
         </div>
         <button onClick={() => onChange(!value)} className={settings.highContrast ? 'text-cyan-400' : 'text-brand-primary'}>
             {value ? <ToggleRight size={40} className="fill-current" /> : <ToggleLeft size={40} className={settings.highContrast ? 'text-slate-600' : 'text-slate-300'} />}
@@ -55,7 +56,6 @@ export const SettingsPage: React.FC = () => {
           const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
           const fileName = `mi_agenda_backup_${dateStr}.json`;
 
-          // Use Data URI for maximum Android compatibility (Save as...)
           const dataStr = "data:application/json;charset=utf-8," + encodeURIComponent(jsonString);
           
           const link = document.createElement('a');
@@ -74,7 +74,7 @@ export const SettingsPage: React.FC = () => {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      if (!window.confirm("ATENCIÓN: Esto sobrescribirá todos los datos actuales (horarios, fotos, rutinas). ¿Estás seguro?")) {
+      if (!window.confirm("ATENCIÓN: Esto sobrescribirá todos los datos actuales. ¿Estás seguro?")) {
           return;
       }
 
@@ -85,167 +85,52 @@ export const SettingsPage: React.FC = () => {
               const success = restoreBackupData(content);
               if (success) {
                   alert("¡Restauración completada con éxito!");
-                  window.location.reload(); // Reload to ensure strict consistency
+                  window.location.reload();
               } else {
-                  alert("Error: El archivo no es válido o está corrupto.");
+                  alert("Error: El archivo no es válido.");
               }
           }
       };
       reader.readAsText(file);
-      // Reset input
       if (backupInputRef.current) backupInputRef.current.value = '';
+  };
+
+  const changeFontSize = (delta: number) => {
+      const newSize = Math.max(0.8, Math.min(1.5, settings.fontSize + delta));
+      updateSettings({ fontSize: parseFloat(newSize.toFixed(1)) });
   };
 
   const containerClass = settings.highContrast ? 'text-cyan-300' : '';
   const cardClass = settings.highContrast ? 'bg-black border-cyan-400 text-cyan-300 border' : 'bg-white shadow-sm border';
 
   return (
-    <div className={`max-w-xl mx-auto space-y-6 ${containerClass}`}>
-      <h2 className="text-2xl font-bold">Ajustes y Accesibilidad</h2>
+    <div className={`max-w-xl mx-auto space-y-6 pb-20 ${containerClass}`}>
+      <h2 className="text-3xl font-black uppercase tracking-tight">Ajustes</h2>
       
       <div className="space-y-4">
-
-        {/* Security Section */}
-        <div className={`p-4 rounded-xl shadow-sm border space-y-4 ${cardClass}`}>
-             <div className="flex items-center gap-3 mb-2">
+        
+        {/* Tamaño de Fuente */}
+        <div className={`p-4 rounded-xl shadow-sm border flex items-center justify-between ${cardClass}`}>
+             <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${settings.highContrast ? 'bg-cyan-400 text-black' : 'bg-slate-100 text-slate-600'}`}>
-                    <Lock size={24} />
+                    <Type size={24} />
                 </div>
-                <span className="font-medium text-lg">Seguridad Parental</span>
+                <span className="font-bold text-lg">Tamaño del Texto</span>
             </div>
-            
-            <div className={`flex items-center justify-between pl-12 border-b pb-4 ${settings.highContrast ? 'border-cyan-900' : 'border-slate-100'}`}>
-                <span className={settings.highContrast ? 'text-cyan-200' : 'text-slate-500'}>PIN Modo Adulto</span>
-                {isEditingPin ? (
-                    <div className="flex gap-2">
-                        <input 
-                            type="text" 
-                            maxLength={4}
-                            value={newPin}
-                            onChange={(e) => setNewPin(e.target.value)}
-                            className="w-16 border rounded px-2 py-1 text-center font-bold tracking-widest outline-none text-black"
-                        />
-                        <button 
-                            onClick={handleSavePin}
-                            className="px-3 py-1 bg-brand-primary text-white text-sm rounded-lg"
-                        >
-                            Guardar
-                        </button>
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-4">
-                        <span className="font-mono font-bold tracking-widest">****</span>
-                        <button 
-                            onClick={() => { setNewPin(settings.pin); setIsEditingPin(true); }}
-                            className={`text-sm underline font-medium ${settings.highContrast ? 'text-cyan-400' : 'text-brand-primary'}`}
-                        >
-                            Cambiar
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {/* Recovery Question Section */}
-            <div className="pl-12 space-y-3">
-                <div className="flex items-center justify-between">
-                    <span className={`flex items-center gap-2 ${settings.highContrast ? 'text-cyan-200' : 'text-slate-500'}`}>
-                        <ShieldQuestion size={16} /> Recuperación de PIN
-                    </span>
-                    {!isEditingSecurity && (
-                        <button 
-                            onClick={() => setIsEditingSecurity(true)}
-                            className={`text-sm underline font-medium ${settings.highContrast ? 'text-cyan-400' : 'text-brand-primary'}`}
-                        >
-                            {settings.securityAnswer ? 'Editar' : 'Configurar'}
-                        </button>
-                    )}
-                </div>
-
-                {isEditingSecurity ? (
-                    <div className={`p-3 rounded-lg space-y-3 animate-in fade-in ${settings.highContrast ? 'bg-cyan-900/30 border border-cyan-600' : 'bg-slate-50'}`}>
-                        <div>
-                            <label className="text-xs font-bold uppercase opacity-70">Pregunta</label>
-                            <select 
-                                value={question}
-                                onChange={(e) => setQuestion(e.target.value)}
-                                className="w-full mt-1 p-2 border rounded-lg text-sm bg-white text-black"
-                            >
-                                <option>¿Cuál es el nombre de tu primera mascota?</option>
-                                <option>¿En qué ciudad naciste?</option>
-                                <option>¿Cuál es tu comida favorita?</option>
-                                <option>¿Cuál es el nombre de tu abuela materna?</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold uppercase opacity-70">Respuesta Secreta</label>
-                            <input 
-                                type="text"
-                                value={answer}
-                                onChange={(e) => setAnswer(e.target.value)}
-                                placeholder="Escribe tu respuesta..."
-                                className="w-full mt-1 p-2 border rounded-lg text-sm bg-white text-black focus:ring-2 focus:ring-brand-primary outline-none"
-                            />
-                        </div>
-                        <div className="flex justify-end gap-2 pt-1">
-                            <button 
-                                onClick={() => setIsEditingSecurity(false)}
-                                className="text-xs opacity-70 hover:opacity-100 font-medium px-2"
-                            >
-                                Cancelar
-                            </button>
-                            <button 
-                                onClick={handleSaveSecurity}
-                                className="flex items-center gap-1 bg-brand-primary text-white text-xs px-3 py-1.5 rounded-md font-bold hover:bg-brand-secondary"
-                            >
-                                <Save size={12} /> Guardar
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <p className={`text-xs ${settings.highContrast ? 'text-cyan-200' : 'text-slate-400'}`}>
-                        {settings.securityAnswer 
-                            ? 'Pregunta de seguridad configurada.' 
-                            : 'No configurada. Si olvidas tu PIN, tendrás que borrar los datos de la app.'}
-                    </p>
-                )}
-            </div>
-        </div>
-
-        {/* Backup Section */}
-        <div className={`p-4 rounded-xl shadow-sm border space-y-4 ${cardClass}`}>
-             <div className="flex items-center gap-3 mb-2">
-                <div className={`p-2 rounded-lg ${settings.highContrast ? 'bg-cyan-400 text-black' : 'bg-green-100 text-green-600'}`}>
-                    <HardDrive size={24} />
-                </div>
-                <span className="font-medium text-lg">Copia de Seguridad y Restauración</span>
-            </div>
-
-            <div className={`text-sm p-3 rounded-lg ${settings.highContrast ? 'bg-cyan-900/30 text-cyan-200' : 'bg-green-50 text-green-800'}`}>
-                Guarda toda tu agenda, fotos y rutinas en un archivo. <br/>
-                <span className="font-bold">Android:</span> Al guardar, puedes seleccionar tu carpeta de <span className="underline">Google Drive</span> para mantenerlo en la nube.
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex items-center gap-4 bg-slate-100/50 p-1 rounded-xl">
                 <button 
-                    onClick={handleCreateBackup}
-                    className="flex items-center justify-center gap-2 py-3 px-4 bg-brand-primary text-white font-bold rounded-xl hover:bg-brand-secondary active:scale-95 transition-all shadow-sm"
+                    onClick={() => changeFontSize(-0.1)}
+                    className="p-2 bg-white rounded-lg shadow-sm hover:bg-slate-50 transition-colors"
                 >
-                    <CloudDownload size={20} /> Crear Copia
+                    <Minus size={20} />
                 </button>
-                
+                <span className="font-black w-12 text-center text-xl">{Math.round(settings.fontSize * 100)}%</span>
                 <button 
-                    onClick={() => backupInputRef.current?.click()}
-                    className={`flex items-center justify-center gap-2 py-3 px-4 border-2 font-bold rounded-xl active:scale-95 transition-all ${settings.highContrast ? 'border-cyan-400 text-cyan-400 hover:bg-cyan-900' : 'border-slate-200 text-slate-600 hover:border-brand-primary hover:text-brand-primary'}`}
+                    onClick={() => changeFontSize(0.1)}
+                    className="p-2 bg-white rounded-lg shadow-sm hover:bg-slate-50 transition-colors"
                 >
-                    <CloudUpload size={20} /> Restaurar Copia
+                    <Plus size={20} />
                 </button>
-                <input 
-                    type="file" 
-                    accept=".json"
-                    ref={backupInputRef}
-                    className="hidden"
-                    onChange={handleRestoreBackup}
-                />
             </div>
         </div>
 
@@ -275,12 +160,144 @@ export const SettingsPage: React.FC = () => {
                 onChange={(v: boolean) => updateSettings({ autoSpeak: v })} 
             />
         )}
-      </div>
 
-      <div className={`p-4 rounded-xl text-sm ${settings.highContrast ? 'bg-cyan-900/30 border border-cyan-700 text-cyan-200' : 'bg-blue-50 text-blue-800'}`}>
-        <p>
-            <strong>Nota de privacidad:</strong> Los datos de la agenda se guardan únicamente en este dispositivo hasta que crees una copia de seguridad manualmente.
-        </p>
+        {/* Security Section */}
+        <div className={`p-4 rounded-xl shadow-sm border space-y-4 ${cardClass}`}>
+             <div className="flex items-center gap-3 mb-2">
+                <div className={`p-2 rounded-lg ${settings.highContrast ? 'bg-cyan-400 text-black' : 'bg-slate-100 text-slate-600'}`}>
+                    <Lock size={24} />
+                </div>
+                <span className="font-bold text-lg">Seguridad</span>
+            </div>
+            
+            <div className={`flex items-center justify-between pl-12 border-b pb-4 ${settings.highContrast ? 'border-cyan-900' : 'border-slate-100'}`}>
+                <span className={settings.highContrast ? 'text-cyan-200' : 'text-slate-500 font-bold'}>PIN Adulto</span>
+                {isEditingPin ? (
+                    <div className="flex gap-2">
+                        <input 
+                            type="text" 
+                            maxLength={4}
+                            value={newPin}
+                            onChange={(e) => setNewPin(e.target.value)}
+                            className="w-16 border rounded px-2 py-1 text-center font-bold tracking-widest outline-none text-black"
+                        />
+                        <button 
+                            onClick={handleSavePin}
+                            className="px-3 py-1 bg-brand-primary text-white text-sm rounded-lg"
+                        >
+                            Guardar
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-4">
+                        <span className="font-mono font-bold tracking-widest text-lg">****</span>
+                        <button 
+                            onClick={() => { setNewPin(settings.pin); setIsEditingPin(true); }}
+                            className={`text-sm underline font-black uppercase ${settings.highContrast ? 'text-cyan-400' : 'text-brand-primary'}`}
+                        >
+                            Cambiar
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            <div className="pl-12 space-y-3">
+                <div className="flex items-center justify-between">
+                    <span className={`flex items-center gap-2 text-xs uppercase font-black ${settings.highContrast ? 'text-cyan-200' : 'text-slate-400'}`}>
+                        <ShieldQuestion size={16} /> Recuperación
+                    </span>
+                    {!isEditingSecurity && (
+                        <button 
+                            onClick={() => setIsEditingSecurity(true)}
+                            className={`text-xs underline font-black uppercase ${settings.highContrast ? 'text-cyan-400' : 'text-brand-primary'}`}
+                        >
+                            {settings.securityAnswer ? 'Editar' : 'Configurar'}
+                        </button>
+                    )}
+                </div>
+
+                {isEditingSecurity ? (
+                    <div className={`p-4 rounded-xl space-y-3 animate-in fade-in ${settings.highContrast ? 'bg-cyan-900/30 border border-cyan-600' : 'bg-slate-50'}`}>
+                        <div>
+                            <label className="text-[10px] font-black uppercase opacity-60 mb-1 block">Pregunta</label>
+                            <select 
+                                value={question}
+                                onChange={(e) => setQuestion(e.target.value)}
+                                className="w-full mt-1 p-3 border rounded-lg text-sm bg-white text-black font-bold"
+                            >
+                                <option>¿Cuál es el nombre de tu primera mascota?</option>
+                                <option>¿En qué ciudad naciste?</option>
+                                <option>¿Cuál es tu comida favorita?</option>
+                                <option>¿Cuál es el nombre de tu abuela materna?</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase opacity-60 mb-1 block">Respuesta</label>
+                            <input 
+                                type="text"
+                                value={answer}
+                                onChange={(e) => setAnswer(e.target.value)}
+                                placeholder="Tu respuesta secreta..."
+                                className="w-full mt-1 p-3 border rounded-lg text-sm bg-white text-black focus:ring-2 focus:ring-brand-primary outline-none font-bold"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <button 
+                                onClick={() => setIsEditingSecurity(false)}
+                                className="text-xs font-black uppercase opacity-60 px-2"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={handleSaveSecurity}
+                                className="flex items-center gap-1 bg-brand-primary text-white text-xs px-4 py-2 rounded-lg font-black uppercase shadow-lg"
+                            >
+                                <Save size={14} /> Guardar
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <p className={`text-[10px] font-bold ${settings.highContrast ? 'text-cyan-200' : 'text-slate-400'}`}>
+                        {settings.securityAnswer 
+                            ? 'RECUPERACIÓN CONFIGURADA' 
+                            : 'SIN CONFIGURAR'}
+                    </p>
+                )}
+            </div>
+        </div>
+
+        {/* Backup Section */}
+        <div className={`p-4 rounded-xl shadow-sm border space-y-4 ${cardClass}`}>
+             <div className="flex items-center gap-3 mb-2">
+                <div className={`p-2 rounded-lg ${settings.highContrast ? 'bg-cyan-400 text-black' : 'bg-green-100 text-green-600'}`}>
+                    <HardDrive size={24} />
+                </div>
+                <span className="font-bold text-lg">Copia de Seguridad</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button 
+                    onClick={handleCreateBackup}
+                    className="flex items-center justify-center gap-2 py-4 px-4 bg-brand-primary text-white font-black uppercase rounded-xl hover:bg-brand-secondary active:scale-95 transition-all shadow-lg"
+                >
+                    <CloudDownload size={20} /> Crear Copia
+                </button>
+                
+                <button 
+                    onClick={() => backupInputRef.current?.click()}
+                    className={`flex items-center justify-center gap-2 py-4 px-4 border-4 font-black uppercase rounded-xl active:scale-95 transition-all ${settings.highContrast ? 'border-cyan-400 text-cyan-400 hover:bg-cyan-900' : 'border-slate-200 text-slate-600 hover:border-brand-primary'}`}
+                >
+                    <CloudUpload size={20} /> Restaurar
+                </button>
+                <input 
+                    type="file" 
+                    accept=".json"
+                    ref={backupInputRef}
+                    className="hidden"
+                    onChange={handleRestoreBackup}
+                />
+            </div>
+        </div>
       </div>
     </div>
   );

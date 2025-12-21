@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserMode } from '../types';
 import { Settings, Users, Calendar, LogOut, Baby, Lock, X, Delete, Sparkles, LayoutGrid, Zap } from 'lucide-react';
@@ -16,6 +16,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   const [pinError, setPinError] = useState(false);
 
   const isHighContrast = settings.highContrast;
+
+  // Aplicar tamaño de fuente al body
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${16 * settings.fontSize}px`;
+  }, [settings.fontSize]);
 
   const handleModeSwitchRequest = () => {
     if (mode === UserMode.ADULT || mode === UserMode.EASY_ADULT) {
@@ -49,7 +54,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                     title="Alternar entre Modo Completo y Modo Fácil"
                 >
                     <Zap size={18} fill={mode === UserMode.EASY_ADULT ? "currentColor" : "none"} />
-                    <span className="hidden sm:inline text-xs font-black uppercase">{mode === UserMode.EASY_ADULT ? 'Modo Fácil' : 'Normal'}</span>
+                    <span className="hidden sm:inline text-xs font-black uppercase tracking-tight">{mode === UserMode.EASY_ADULT ? 'Fácil' : 'Normal'}</span>
                 </button>
             )}
             <button 
@@ -65,7 +70,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 pb-24 flex flex-col">
+      <main id="main-content" className="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 pb-24 flex flex-col">
         {children}
       </main>
 
@@ -150,6 +155,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               </div>
           </div>
       )}
+      <div id="accessibility-announcer" className="sr-only" aria-live="polite"></div>
     </div>
   );
 };

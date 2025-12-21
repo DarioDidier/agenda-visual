@@ -104,6 +104,7 @@ export interface AppSettings {
   voiceEnabled: boolean;
   autoSpeak: boolean; 
   pin: string; 
+  fontSize: number; // Multiplicador de tamaño de fuente (0.8 a 1.5)
   securityQuestion?: string;
   securityAnswer?: string;
 }

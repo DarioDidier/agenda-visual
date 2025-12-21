@@ -13,7 +13,6 @@ const safeSave = (key: string, value: any) => {
   } catch (e) {
     if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
       console.warn("Límite de almacenamiento alcanzado. No se pudieron guardar todos los cambios.");
-      // Opcional: Podríamos emitir un evento o alerta aquí
     } else {
       console.error("Error guardando en localStorage:", e);
     }
@@ -104,6 +103,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       voiceEnabled: true,
       autoSpeak: true,
       pin: '1234',
+      fontSize: 1, // Tamaño base
       ...parsed
     };
   });
