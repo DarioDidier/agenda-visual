@@ -9,6 +9,7 @@ import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
 import { RoutineLibraryModal } from '../components/RoutineLibraryModal';
 import { exportScheduleToPDF } from '../services/pdfService';
 import { CongratulationModal } from '../components/CongratulationModal';
+import { RewardConfigModal } from '../components/RewardConfigModal';
 import { speakText } from '../services/speechService';
 
 const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
@@ -26,7 +27,7 @@ const spanishMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'J
 export const ScheduleView: React.FC = () => {
   const { 
     schedule, mode, pictograms, clearDayActivities, deleteActivity,
-    goToToday, changeWeek, weekDates, settings, rewards, redeemReward
+    goToToday, changeWeek, weekDates, settings, rewards, redeemReward, setReward
   } = useApp();
   
   const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
@@ -46,6 +47,9 @@ export const ScheduleView: React.FC = () => {
 
   // Congratulation Logic
   const [showCongratulation, setShowCongratulation] = useState<{isOpen: boolean, label: string, emoji: string, imageUrl?: string} | null>(null);
+
+  // Reward Config Logic for Adult Mode
+  const [rewardConfigTarget, setRewardConfigTarget] = useState<{ dayKey: string, period: TimePeriod } | null>(null);
 
   const isHighContrast = settings.highContrast;
   const currentChildDayDate = weekDates[selectedDayIndex];
@@ -123,11 +127,18 @@ export const ScheduleView: React.FC = () => {
 
   const getPictogram = (id: string) => pictograms.find(p => p.id === id) || pictograms[0];
 
+  const handleSaveReward = (label: string, emoji: string, imageUrl?: string) => {
+      if (rewardConfigTarget) {
+          setReward(rewardConfigTarget.dayKey, rewardConfigTarget.period, label, emoji, imageUrl);
+          setRewardConfigTarget(null);
+          speakText("Premio configurado");
+      }
+  };
+
   if (mode === UserMode.CHILD) {
     const displayDate = currentChildDayDate || new Date();
     const dayKey = getDateKey(displayDate);
     const dayActivities = (schedule[dayKey] || []).filter(a => (a.period || 'morning') === childActivePeriod);
-    const periodReward = rewards[`${dayKey}-${childActivePeriod}`];
     
     return (
       <div className="flex flex-col h-full space-y-4 max-w-7xl mx-auto w-full">
@@ -286,6 +297,26 @@ export const ScheduleView: React.FC = () => {
                 </div>
                 
                 <div className="p-4 space-y-3 min-h-[120px]">
+                    {/* Adult Mode Reward Configuration Row */}
+                    {!isPast && (
+                        <div className={`flex items-center justify-around p-2 mb-2 rounded-2xl border-2 border-dashed ${isHighContrast ? 'border-white/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                            {(['morning', 'afternoon', 'evening'] as TimePeriod[]).map(p => {
+                                const hasReward = !!rewards[`${dayKey}-${p}`];
+                                return (
+                                    <button 
+                                        key={p}
+                                        onClick={() => setRewardConfigTarget({ dayKey, period: p })}
+                                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all hover:bg-white active:scale-90 ${hasReward ? 'text-pink-500 font-black' : 'text-slate-300'}`}
+                                        title={`Configurar premio para la ${p === 'morning' ? 'mañana' : p === 'afternoon' ? 'tarde' : 'noche'}`}
+                                    >
+                                        <Gift size={18} fill={hasReward ? "currentColor" : "none"} />
+                                        <span className="text-[8px] uppercase">{p === 'morning' ? 'Mañ' : p === 'afternoon' ? 'Tar' : 'Noc'}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
                     {dayActivities.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-10 opacity-20">
                             <Plus size={32} className={isHighContrast ? 'text-white' : 'text-slate-400'} />
@@ -334,6 +365,7 @@ export const ScheduleView: React.FC = () => {
       )}
 
       {isLibraryOpen && <RoutineLibraryModal onClose={() => setIsLibraryOpen(false)} />}
+      
       {isSelectorOpen && editingDateKey && (
           <PictogramSelectorModal 
             onSelect={(pic) => {
@@ -352,6 +384,17 @@ export const ScheduleView: React.FC = () => {
                 setIsSelectorOpen(false);
             }} 
             onClose={() => setIsSelectorOpen(false)} 
+          />
+      )}
+
+      {rewardConfigTarget && (
+          <RewardConfigModal 
+            period={rewardConfigTarget.period}
+            initialLabel={rewards[`${rewardConfigTarget.dayKey}-${rewardConfigTarget.period}`]?.label}
+            initialEmoji={rewards[`${rewardConfigTarget.dayKey}-${rewardConfigTarget.period}`]?.emoji}
+            initialImageUrl={rewards[`${rewardConfigTarget.dayKey}-${rewardConfigTarget.period}`]?.imageUrl}
+            onSave={handleSaveReward}
+            onClose={() => setRewardConfigTarget(null)}
           />
       )}
     </div>
