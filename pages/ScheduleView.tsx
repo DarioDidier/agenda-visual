@@ -3,11 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserMode, Activity, PictogramData, TimePeriod } from '../types';
 import { PictogramCard } from '../components/PictogramCard';
-import { Plus, ChevronLeft, ChevronRight, Grid, List, Trash2, CalendarDays, FileText, Loader2, Sparkles, Book, Sun, Sunset, Moon, X, AlertTriangle } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Grid, List, Trash2, CalendarDays, FileText, Loader2, Sparkles, Book, Sun, Sunset, Moon, X, AlertTriangle, Gift } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
 import { RoutineLibraryModal } from '../components/RoutineLibraryModal';
 import { exportScheduleToPDF } from '../services/pdfService';
+import { CongratulationModal } from '../components/CongratulationModal';
+import { speakText } from '../services/speechService';
 
 const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 
@@ -24,7 +26,7 @@ const spanishMonths = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'J
 export const ScheduleView: React.FC = () => {
   const { 
     schedule, mode, pictograms, clearDayActivities, deleteActivity,
-    goToToday, changeWeek, weekDates, settings 
+    goToToday, changeWeek, weekDates, settings, rewards, redeemReward
   } = useApp();
   
   const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
@@ -42,9 +44,11 @@ export const ScheduleView: React.FC = () => {
 
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; dayKey: string; dayName: string } | null>(null);
 
+  // Congratulation Logic
+  const [showCongratulation, setShowCongratulation] = useState<{isOpen: boolean, label: string, emoji: string, imageUrl?: string} | null>(null);
+
   const isHighContrast = settings.highContrast;
   const currentChildDayDate = weekDates[selectedDayIndex];
-  // Fix: Correct variable name from currentChildDayKey to currentChildDayDate to avoid self-reference error
   const currentChildDayKey = currentChildDayDate ? getDateKey(currentChildDayDate) : '';
   const todayKey = getDateKey(new Date());
 
@@ -60,6 +64,30 @@ export const ScheduleView: React.FC = () => {
         setSelectedDayIndex(today === 0 ? 6 : today - 1);
     }
   }, [mode]);
+
+  // Check for period completion whenever schedule changes
+  useEffect(() => {
+      if (mode === UserMode.CHILD) {
+          const displayDate = currentChildDayDate || new Date();
+          const dayKey = getDateKey(displayDate);
+          const periodActivities = (schedule[dayKey] || []).filter(a => (a.period || 'morning') === childActivePeriod);
+          
+          if (periodActivities.length > 0 && periodActivities.every(a => a.isDone)) {
+              const rewardKey = `${dayKey}-${childActivePeriod}`;
+              const reward = rewards[rewardKey];
+              
+              if (reward && !reward.isRedeemed) {
+                  redeemReward(dayKey, childActivePeriod);
+                  setShowCongratulation({
+                      isOpen: true,
+                      label: reward.label,
+                      emoji: reward.emoji,
+                      imageUrl: reward.imageUrl
+                  });
+              }
+          }
+      }
+  }, [schedule, childActivePeriod, currentChildDayDate, mode, rewards, redeemReward]);
 
   const handleAddActivity = (dateKey: string) => {
     if (dateKey < todayKey) return;
@@ -97,7 +125,9 @@ export const ScheduleView: React.FC = () => {
 
   if (mode === UserMode.CHILD) {
     const displayDate = currentChildDayDate || new Date();
-    const dayActivities = (schedule[getDateKey(displayDate)] || []).filter(a => (a.period || 'morning') === childActivePeriod);
+    const dayKey = getDateKey(displayDate);
+    const dayActivities = (schedule[dayKey] || []).filter(a => (a.period || 'morning') === childActivePeriod);
+    const periodReward = rewards[`${dayKey}-${childActivePeriod}`];
     
     return (
       <div className="flex flex-col h-full space-y-4 max-w-7xl mx-auto w-full">
@@ -127,16 +157,25 @@ export const ScheduleView: React.FC = () => {
         <nav className={`flex p-2 rounded-3xl mx-2 gap-2 ${isHighContrast ? 'bg-white/10' : 'bg-slate-200/50'}`}>
             {(['morning', 'afternoon', 'evening'] as TimePeriod[]).map((p) => {
                  const isActive = childActivePeriod === p;
+                 const rewardKey = `${dayKey}-${p}`;
+                 const hasReward = !!rewards[rewardKey];
+                 const isRedeemed = rewards[rewardKey]?.isRedeemed;
+
                  return (
                     <button
                         key={p}
                         onClick={() => setChildActivePeriod(p)}
-                        className={`flex-1 flex flex-col items-center py-4 rounded-2xl transition-all ${isActive ? 'bg-white shadow-lg scale-105 z-10' : 'opacity-40 hover:opacity-60'}`}
+                        className={`flex-1 flex flex-col items-center py-4 rounded-2xl transition-all relative ${isActive ? 'bg-white shadow-lg scale-105 z-10' : 'opacity-40 hover:opacity-60'}`}
                     >
                         {p === 'morning' ? <Sun className="text-yellow-500" size={32} /> : p === 'afternoon' ? <Sunset className="text-orange-500" size={32} /> : <Moon className="text-indigo-500" size={32} />}
                         <span className={`text-sm font-black mt-1 uppercase ${isActive ? 'text-slate-800' : (isHighContrast ? 'text-white' : 'text-slate-500')}`}>
                             {p === 'morning' ? 'Mañana' : p === 'afternoon' ? 'Tarde' : 'Noche'}
                         </span>
+                        {hasReward && (
+                            <div className={`absolute top-1 right-1 ${isRedeemed ? 'text-green-500' : 'text-pink-400'}`}>
+                                <Gift size={16} fill={isRedeemed ? "currentColor" : "none"} />
+                            </div>
+                        )}
                     </button>
                  );
             })}
@@ -155,12 +194,21 @@ export const ScheduleView: React.FC = () => {
                             key={activity.id}
                             activity={activity} 
                             pictogram={getPictogram(activity.pictogramId)} 
-                            day={getDateKey(displayDate)}
+                            day={dayKey}
                         />
                     ))}
                  </div>
              )}
         </div>
+
+        {showCongratulation?.isOpen && (
+            <CongratulationModal 
+                message={`¡Has terminado! Tu premio es: ${showCongratulation.label}`}
+                rewardEmoji={showCongratulation.emoji}
+                rewardImageUrl={showCongratulation.imageUrl}
+                onClose={() => setShowCongratulation(null)}
+            />
+        )}
       </div>
     );
   }

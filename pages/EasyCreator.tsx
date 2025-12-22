@@ -1,13 +1,14 @@
 
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight, Trash2, Plus, Eye, Type } from 'lucide-react';
+import { Sparkles, Sun, Sunset, Moon, Check, Printer, Loader2, Clock, Pencil, Calendar as CalendarIcon, ChevronRight, Trash2, Plus, Eye, Type, Gift } from 'lucide-react';
 import { translateTextToKeywords } from '../services/geminiService';
 import { searchArasaac, getArasaacImageUrl } from '../services/arasaacService';
 import { Activity, PictogramData, Category, TimePeriod } from '../types';
 import { speakText } from '../services/speechService';
 import { exportScheduleToPDF } from '../services/pdfService';
 import { PictogramSelectorModal } from '../components/PictogramSelectorModal';
+import { RewardConfigModal } from '../components/RewardConfigModal';
 
 // Generador de ID robusto y compatible
 const generateSafeId = () => Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
@@ -26,7 +27,7 @@ interface EasyDraftPic extends PictogramData {
 }
 
 export const EasyCreator: React.FC = () => {
-  const { addPictogram, setSchedule, pictograms, settings, updateSettings } = useApp();
+  const { addPictogram, setSchedule, pictograms, settings, updateSettings, setReward } = useApp();
   const [step, setStep] = useState(1);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,10 @@ export const EasyCreator: React.FC = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('morning');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Reward State
+  const [isRewardModalOpen, setIsRewardModalOpen] = useState(false);
+  const [draftReward, setDraftReward] = useState<{label: string, emoji: string, imageUrl?: string} | null>(null);
 
   const isHighContrast = settings.highContrast;
   const titleColor = isHighContrast ? 'text-white' : 'text-slate-800';
@@ -115,6 +120,11 @@ export const EasyCreator: React.FC = () => {
             };
         });
 
+        // Save Reward if configured
+        if (draftReward) {
+            setReward(selectedDay, selectedPeriod, draftReward.label, draftReward.emoji, draftReward.imageUrl);
+        }
+
         speakText("Guardado");
         setShowSuccess(true);
         
@@ -124,6 +134,7 @@ export const EasyCreator: React.FC = () => {
             setStep(1);
             setInputText('');
             setDraftPics([]);
+            setDraftReward(null);
         }, 1500);
     } catch (error) {
         console.error("Fatal save error:", error);
@@ -274,6 +285,27 @@ export const EasyCreator: React.FC = () => {
             ))}
           </div>
 
+          {/* Reward Section */}
+          <div className={`p-6 rounded-[40px] border-4 shadow-lg flex items-center justify-between ${draftReward ? 'bg-pink-50 border-pink-200' : (isHighContrast ? 'bg-black border-white/20' : 'bg-white border-slate-100')}`}>
+              <div className="flex items-center gap-4">
+                  <div className={`p-4 rounded-2xl ${draftReward ? 'bg-pink-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                      <Gift size={28} />
+                  </div>
+                  <div>
+                      <p className={`font-black uppercase text-xs tracking-widest ${isHighContrast ? 'text-white' : 'text-slate-400'}`}>Premio de la {selectedPeriod === 'morning' ? 'mañana' : selectedPeriod === 'afternoon' ? 'tarde' : 'noche'}</p>
+                      <p className={`font-black text-lg ${isHighContrast ? 'text-cyan-300' : 'text-slate-800'}`}>
+                          {draftReward ? `${draftReward.emoji} ${draftReward.label}` : 'Sin configurar'}
+                      </p>
+                  </div>
+              </div>
+              <button 
+                onClick={() => setIsRewardModalOpen(true)}
+                className={`px-4 py-2 rounded-xl font-black text-sm transition-all ${draftReward ? 'bg-pink-100 text-pink-600' : 'bg-brand-primary text-white shadow-lg active:scale-95'}`}
+              >
+                  {draftReward ? 'Cambiar' : 'Configurar'}
+              </button>
+          </div>
+
           <div className="flex gap-4 pt-4">
             <button onClick={() => setStep(1)} className={`flex-1 py-6 rounded-[35px] font-black text-lg active:scale-95 transition-all ${isHighContrast ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-500'}`}>VOLVER</button>
             <button onClick={() => { setStep(3); }} className="flex-[2] py-6 bg-brand-primary text-white rounded-[35px] font-black text-lg shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2">
@@ -373,6 +405,20 @@ export const EasyCreator: React.FC = () => {
                 setEditingIndex(null);
             }} 
             onClose={() => setEditingIndex(null)} 
+          />
+      )}
+
+      {isRewardModalOpen && (
+          <RewardConfigModal 
+            period={selectedPeriod}
+            initialLabel={draftReward?.label}
+            initialEmoji={draftReward?.emoji}
+            initialImageUrl={draftReward?.imageUrl}
+            onSave={(label, emoji, imageUrl) => {
+                setDraftReward({label, emoji, imageUrl});
+                setIsRewardModalOpen(false);
+            }}
+            onClose={() => setIsRewardModalOpen(false)}
           />
       )}
     </div>
