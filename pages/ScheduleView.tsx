@@ -129,6 +129,11 @@ export const ScheduleView: React.FC = () => {
 
   const handleSaveReward = (label: string, emoji: string, imageUrl?: string) => {
       if (rewardConfigTarget) {
+          // Double check to prevent accidental saves to past dates
+          if (rewardConfigTarget.dayKey < todayKey) {
+              alert("No se pueden modificar premios de días pasados.");
+              return;
+          }
           setReward(rewardConfigTarget.dayKey, rewardConfigTarget.period, label, emoji, imageUrl);
           setRewardConfigTarget(null);
           speakText("Premio configurado");
@@ -298,24 +303,23 @@ export const ScheduleView: React.FC = () => {
                 
                 <div className="p-4 space-y-3 min-h-[120px]">
                     {/* Adult Mode Reward Configuration Row */}
-                    {!isPast && (
-                        <div className={`flex items-center justify-around p-2 mb-2 rounded-2xl border-2 border-dashed ${isHighContrast ? 'border-white/20' : 'border-slate-100 bg-slate-50/50'}`}>
-                            {(['morning', 'afternoon', 'evening'] as TimePeriod[]).map(p => {
-                                const hasReward = !!rewards[`${dayKey}-${p}`];
-                                return (
-                                    <button 
-                                        key={p}
-                                        onClick={() => setRewardConfigTarget({ dayKey, period: p })}
-                                        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all hover:bg-white active:scale-90 ${hasReward ? 'text-pink-500 font-black' : 'text-slate-300'}`}
-                                        title={`Configurar premio para la ${p === 'morning' ? 'mañana' : p === 'afternoon' ? 'tarde' : 'noche'}`}
-                                    >
-                                        <Gift size={18} fill={hasReward ? "currentColor" : "none"} />
-                                        <span className="text-[8px] uppercase">{p === 'morning' ? 'Mañ' : p === 'afternoon' ? 'Tar' : 'Noc'}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
+                    <div className={`flex items-center justify-around p-2 mb-2 rounded-2xl border-2 border-dashed ${isHighContrast ? 'border-white/20' : 'border-slate-100 bg-slate-50/50'}`}>
+                        {(['morning', 'afternoon', 'evening'] as TimePeriod[]).map(p => {
+                            const hasReward = !!rewards[`${dayKey}-${p}`];
+                            return (
+                                <button 
+                                    key={p}
+                                    onClick={() => !isPast && setRewardConfigTarget({ dayKey, period: p })}
+                                    disabled={isPast}
+                                    className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${!isPast ? 'hover:bg-white active:scale-90' : 'opacity-40 cursor-not-allowed'} ${hasReward ? 'text-pink-500 font-black' : 'text-slate-300'}`}
+                                    title={isPast ? "No se pueden editar premios pasados" : `Configurar premio para la ${p === 'morning' ? 'mañana' : p === 'afternoon' ? 'tarde' : 'noche'}`}
+                                >
+                                    <Gift size={18} fill={hasReward ? "currentColor" : "none"} />
+                                    <span className="text-[8px] uppercase">{p === 'morning' ? 'Mañ' : p === 'afternoon' ? 'Tar' : 'Noc'}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
 
                     {dayActivities.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-10 opacity-20">
